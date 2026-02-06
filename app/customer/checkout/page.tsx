@@ -142,7 +142,7 @@ export default function CheckoutPage() {
                                 <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <CheckCircle2 className="w-12 h-12" />
                                 </div>
-                                <h2 className="text-3xl font-black text-gray-900 mb-4">Order Placed!</h2>
+                                <h2 className="text-3xl font-black text-gray-900 mb-4">Payment Initiated!</h2>
                                 {isSimulated ? (
                                     <div className="mb-8">
                                         <div className="inline-block px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-xs font-black uppercase tracking-widest mb-4">
@@ -153,8 +153,8 @@ export default function CheckoutPage() {
                                         </p>
                                     </div>
                                 ) : (
-                                    <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                                        Please check your phone for the M-Pesa prompt to complete the payment of <span className="font-bold text-gray-900">{formatCurrency(total)}</span>.
+                                    <p className="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
+                                        Please check your phone for the M-Pesa prompt. Once you pay <span className="font-bold text-gray-900">{formatCurrency(total)}</span>, your order will be <span className="text-blue-600 font-bold">automatically confirmed</span> and visible in your tracker.
                                     </p>
                                 )}
                                 <div className="flex flex-col sm:flex-row gap-4 justify-center">

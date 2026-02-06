@@ -45,37 +45,19 @@ export default function OrdersPage() {
         }
     }
 
-    const retryPayment = async (order: any) => {
+
+    const clearHistory = async () => {
+        if (!confirm('Are you sure you want to clear your order history? Active orders will not be affected.')) return
+
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-
-            // Get user phone from profile
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('phone')
-                .eq('id', user.id)
-                .single()
-
-            const response = await fetch('/api/checkout/stk-push', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    amount: order.total,
-                    phone: profile?.phone || '',
-                    orderId: order.id
-                })
-            })
-
-            const result = await response.json()
+            const response = await fetch('/api/orders/clear', { method: 'POST' })
             if (response.ok) {
-                alert('Payment prompt sent to your phone!')
+                fetchOrders()
             } else {
-                alert(result.error || 'Failed to send payment prompt')
+                alert('Failed to clear history')
             }
         } catch (error) {
-            console.error('Retry payment error:', error)
-            alert('An error occurred. Please try again.')
+            console.error('Clear history error:', error)
         }
     }
 
@@ -98,13 +80,21 @@ export default function OrdersPage() {
                         </Link>
                         <h1 className="text-2xl font-black text-gray-900">My Orders</h1>
                     </div>
-                    <button
-                        onClick={fetchOrders}
-                        className="p-2 hover:bg-gray-100 rounded-full transition text-blue-600"
-                        title="Refresh"
-                    >
-                        <RefreshCcw className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={clearHistory}
+                            className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition"
+                        >
+                            Clear History
+                        </button>
+                        <button
+                            onClick={fetchOrders}
+                            className="p-2 hover:bg-gray-100 rounded-full transition text-blue-600"
+                            title="Refresh"
+                        >
+                            <RefreshCcw className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
             </header>
 

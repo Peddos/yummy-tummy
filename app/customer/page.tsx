@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import Link from 'next/link'
 import ShoppingCart from '@/components/cart/ShoppingCart'
 import {
     Clock, Package, MapPin, Star, History, ArrowRight,
@@ -46,57 +47,6 @@ export default function CustomerDashboard() {
         setLoading(false)
     }
 
-    const fetchActiveOrders = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data, error } = await supabase
-            .from('orders')
-            .select(`
-                *,
-                vendor:vendor_id (business_name)
-            `)
-            .eq('customer_id', user.id)
-            .in('status', ['pending_payment', 'paid', 'preparing', 'ready_for_pickup'])
-            .order('created_at', { ascending: false })
-
-        if (!error) setActiveOrders(data || [])
-    }
-
-    const retryPayment = async (order: any) => {
-        try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-
-            // Get user phone from profile if not available elsewhere
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('phone')
-                .eq('id', user.id)
-                .single()
-
-            const response = await fetch('/api/checkout/stk-push', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    amount: order.total,
-                    phone: profile?.phone || '',
-                    orderId: order.id
-                })
-            })
-
-            const result = await response.json()
-            if (response.ok) {
-                alert('Payment prompt sent to your phone!')
-            } else {
-                alert(result.error || 'Failed to send payment prompt')
-            }
-        } catch (error) {
-            console.error('Retry payment error:', error)
-            alert('An error occurred. Please try again.')
-        }
-    }
-
     const fetchVendors = async () => {
         const { data, error } = await supabase
             .from('vendors')
@@ -111,6 +61,23 @@ export default function CustomerDashboard() {
         }
     }
 
+    const fetchActiveOrders = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                vendor:vendor_id (business_name)
+            `)
+            .eq('customer_id', user.id)
+            .in('status', ['paid', 'preparing', 'ready_for_pickup', 'assigned_to_rider', 'picked_up', 'in_transit'])
+            .order('created_at', { ascending: false })
+
+        if (!error) setActiveOrders(data || [])
+    }
+
     const handleLogout = async () => {
         await supabase.auth.signOut()
         router.push('/')
@@ -118,8 +85,8 @@ export default function CustomerDashboard() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-xl">Loading...</div>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
             </div>
         )
     }
@@ -127,73 +94,67 @@ export default function CustomerDashboard() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
             {/* Header */}
-            <header className="bg-white shadow-sm border-b">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                Food Delivery
-                            </h1>
-                            <p className="text-sm text-gray-600">Welcome back, {user?.email}</p>
+            <header className="bg-white shadow-sm border-b sticky top-0 z-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-200">
+                            F
                         </div>
+                        <div>
+                            <h1 className="text-xl font-black text-gray-900 leading-tight">Food Delivery</h1>
+                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Customer Portal</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <Link href="/customer/orders" className="p-2 text-gray-400 hover:text-blue-600 transition">
+                            <History className="w-6 h-6" />
+                        </Link>
                         <button
                             onClick={handleLogout}
-                            className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                            className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl text-sm font-bold hover:bg-gray-200 transition"
                         >
-                            Logout
+                            Log Out
                         </button>
                     </div>
                 </div>
             </header>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Active Order Tracker */}
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+                {/* Live Order Tracker - Only shows confirmed/paid orders */}
                 {activeOrders.length > 0 && (
-                    <div className="mb-12 animate-in fade-in slide-in-from-top duration-500">
-                        <div className="flex items-center gap-2 mb-4 px-2 text-xs font-black uppercase tracking-widest text-blue-600">
-                            <TrendingUp className="w-4 h-4" />
-                            Live Order Status
+                    <div className="mb-14 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-center gap-2 mb-6 px-1 text-[10px] font-black uppercase tracking-[0.2em] text-blue-600/60">
+                            <div className="w-1 h-1 bg-blue-600 rounded-full animate-pulse"></div>
+                            Active Tracked Orders
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {activeOrders.map(order => (
-                                <div key={order.id} onClick={() => router.push('/customer/orders')} className="bg-white rounded-[35px] p-6 shadow-xl shadow-blue-100 border border-blue-100 flex items-center justify-between cursor-pointer hover:scale-[1.02] transition-transform group">
+                                <div
+                                    key={order.id}
+                                    onClick={() => router.push('/customer/orders')}
+                                    className="bg-white rounded-[40px] p-8 shadow-2xl shadow-blue-100/50 border border-blue-50/50 flex flex-col gap-6 cursor-pointer hover:scale-[1.02] transition-all duration-300 group relative overflow-hidden"
+                                >
                                     <div className="flex items-center gap-5">
-                                        <div className="w-16 h-16 bg-blue-50 rounded-[25px] flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                                        <div className="w-16 h-16 bg-blue-50 rounded-3xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
                                             <Package className="w-8 h-8" />
                                         </div>
                                         <div>
-                                            <p className="text-xs font-black text-slate-400 mb-1 uppercase tracking-widest">{order.vendor?.business_name}</p>
+                                            <p className="text-[10px] font-black text-blue-600/40 mb-1 uppercase tracking-widest">{order.vendor?.business_name}</p>
                                             <h3 className="text-xl font-black text-slate-900 leading-tight">
-                                                {order.status === 'pending_payment' ? 'Waiting for Payment' : getOrderStatusLabel(order.status)}
+                                                {getOrderStatusLabel(order.status)}
                                             </h3>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <div className="flex gap-1">
-                                                    {[1, 2, 3, 4].map(idx => (
-                                                        <div key={idx} className={`h-1 w-8 rounded-full ${order.status === 'pending_payment' ? (idx === 1 ? 'bg-yellow-400' : 'bg-slate-100') :
-                                                                idx <= 2 ? 'bg-blue-600' : 'bg-slate-100'
-                                                            }`}></div>
-                                                    ))}
-                                                </div>
-                                                <span className="text-[10px] font-black text-blue-600 uppercase">
-                                                    {order.status === 'pending_payment' ? 'Step 1 of 4' : 'Step 2 of 4'}
-                                                </span>
-                                            </div>
                                         </div>
                                     </div>
-                                    {order.status === 'pending_payment' ? (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                retryPayment(order);
-                                            }}
-                                            className="bg-blue-600 text-white px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-200"
-                                        >
-                                            Pay Now
-                                        </button>
-                                    ) : (
-                                        <ArrowRight className="w-6 h-6 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                                    )}
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 flex gap-1.5">
+                                            {[1, 2, 3, 4].map(idx => (
+                                                <div key={idx} className={`h-1.5 flex-1 rounded-full transition-all duration-1000 ${idx <= 2 ? 'bg-blue-600 shadow-[0_0_8px_rgba(37,99,235,0.4)]' : 'bg-slate-100'
+                                                    }`}></div>
+                                            ))}
+                                        </div>
+                                        <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                                    </div>
                                 </div>
                             ))}
                         </div>
