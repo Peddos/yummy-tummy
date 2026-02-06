@@ -30,7 +30,7 @@ export async function POST(req: Request) {
             console.log('⚠️ M-Pesa not configured. Simulating successful STK Push for Order:', orderId)
 
             // Simulating a "Paid" status directly in DB so user can test vendor/rider flow
-            await supabase
+            await supabaseAdmin
                 .from('orders')
                 .update({ status: 'paid' })
                 .eq('id', orderId)

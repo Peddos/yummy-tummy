@@ -18,11 +18,11 @@ export default function VendorOrdersPage() {
     useEffect(() => {
         fetchOrders()
 
-        // Listen for new orders
+        // Real-time listener for incoming orders and status changes
         const channel = supabase
-            .channel('vendor-orders')
+            .channel('vendor-orders-sync')
             .on('postgres_changes', {
-                event: 'INSERT',
+                event: '*', // Listen to INSERT, UPDATE, etc.
                 schema: 'public',
                 table: 'orders'
             }, () => fetchOrders())
@@ -128,14 +128,13 @@ export default function VendorOrdersPage() {
                                                     </button>
                                                 </div>
                                             )}
-                                            {order.status === 'paid' && (
-                                                <button
-                                                    onClick={() => updateStatus(order.id, 'confirmed')}
-                                                    className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-black hover:bg-blue-700 transition"
-                                                >
-                                                    Confirm Order
-                                                </button>
-                                            )}
+                                            <button
+                                                onClick={() => updateStatus(order.id, 'confirmed')}
+                                                className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-black hover:bg-blue-700 transition shadow-lg shadow-blue-100 flex items-center gap-2"
+                                            >
+                                                <CheckCircle2 className="w-4 h-4" />
+                                                Proceed to Confirm
+                                            </button>
                                             {order.status === 'confirmed' && (
                                                 <button
                                                     onClick={() => updateStatus(order.id, 'preparing')}

@@ -25,6 +25,18 @@ export default function VendorDashboard() {
 
     useEffect(() => {
         fetchDashboardData()
+
+        // Real-time listener for dashboard updates
+        const channel = supabase
+            .channel('vendor-dashboard-sync')
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'orders'
+            }, () => fetchDashboardData())
+            .subscribe()
+
+        return () => { supabase.removeChannel(channel) }
     }, [])
 
     const fetchDashboardData = async () => {
