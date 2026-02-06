@@ -32,14 +32,15 @@ export default function HomePage() {
                     .eq('id', session.user.id)
                     .single();
 
-                if (profile) {
+                if (profile && (profile as any).role) {
+                    const role = (profile as any).role;
                     const redirectMap: Record<string, string> = {
                         customer: '/customer',
                         vendor: '/vendor/dashboard',
                         rider: '/rider/dashboard',
                         admin: '/admin/dashboard',
                     };
-                    router.push(redirectMap[profile.role] || '/customer');
+                    router.push(redirectMap[role] || '/customer');
                     return;
                 }
             }
