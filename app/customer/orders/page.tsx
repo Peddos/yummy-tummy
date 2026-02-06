@@ -32,6 +32,7 @@ export default function OrdersPage() {
 
     const fetchOrders = async () => {
         try {
+            setLoading(true)
             const response = await fetch('/api/orders')
             const data = await response.json()
             if (response.ok) {
@@ -108,6 +109,14 @@ export default function OrdersPage() {
             </header>
 
             <main className="max-w-4xl mx-auto px-4 mt-8 space-y-6">
+                <div className="flex items-center gap-3 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                    <Clock className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                    <p className="text-xs text-blue-800 leading-normal">
+                        <span className="font-black uppercase tracking-tighter mr-2">Auto-Cleanup:</span>
+                        Failed or abandoned orders are automatically deleted within 5 minutes to keep your history clean. Only successfully paid orders are recorded.
+                    </p>
+                </div>
+
                 {orders.length === 0 ? (
                     <div className="bg-white rounded-3xl p-12 text-center shadow-sm border border-gray-100">
                         <div className="text-6xl mb-6">🥡</div>
@@ -175,16 +184,11 @@ export default function OrdersPage() {
                             {/* View Details Toggle */}
                             <div className="bg-gray-50/50 p-4 border-t flex items-center justify-between gap-4">
                                 <button className="text-xs font-bold text-gray-500 uppercase tracking-widest hover:text-blue-600 transition">
-                                    Order Details
+                                    View Full Details
                                 </button>
-                                {order.status === 'pending_payment' && (
-                                    <button
-                                        onClick={() => retryPayment(order)}
-                                        className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition shadow-lg shadow-blue-100"
-                                    >
-                                        Retry Payment
-                                    </button>
-                                )}
+                                <div className="text-[10px] text-gray-400 font-medium italic">
+                                    Payment Verified
+                                </div>
                             </div>
                         </div>
                     ))

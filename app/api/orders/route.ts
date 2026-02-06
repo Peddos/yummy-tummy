@@ -95,6 +95,17 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
         }
 
+        // AUTO-CLEANUP: Delete stale 'pending_payment' orders older than 5 minutes
+        // This ensures the database doesn't get "flooded" with failed/abandoned orders
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+
+        await supabase
+            .from('orders')
+            .delete()
+            .eq('status', 'pending_payment')
+            .lt('created_at', fiveMinutesAgo)
+            .eq('customer_id', user.id)
+
         const { data: orders, error } = await supabase
             .from('orders')
             .select(`
@@ -106,6 +117,7 @@ export async function GET(req: Request) {
                 )
             `)
             .eq('customer_id', user.id)
+            .neq('status', 'pending_payment') // Hide pending payments from the main list
             .order('created_at', { ascending: false })
 
         if (error) throw error
