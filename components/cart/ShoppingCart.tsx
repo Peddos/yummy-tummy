@@ -113,11 +113,11 @@ export default function ShoppingCart() {
                                 </div>
                                 <div className="flex justify-between text-gray-700">
                                     <span>Delivery Fee</span>
-                                    <span className="font-semibold">{formatCurrency(100)}</span>
+                                    <span className="font-semibold">{formatCurrency(1)}</span>
                                 </div>
                                 <div className="flex justify-between text-lg font-bold text-gray-900 pt-3 border-t">
                                     <span>Total</span>
-                                    <span>{formatCurrency(total + 100)}</span>
+                                    <span>{formatCurrency(total + 1)}</span>
                                 </div>
                             </div>
 
