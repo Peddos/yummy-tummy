@@ -24,7 +24,7 @@ export default function CheckoutPage() {
     const [isSimulated, setIsSimulated] = useState(false)
 
     const subtotal = getTotal()
-    const deliveryFee = 1
+    const deliveryFee = parseFloat(process.env.NEXT_PUBLIC_DELIVERY_FEE || '1')
     const total = subtotal + deliveryFee
 
     useEffect(() => {
