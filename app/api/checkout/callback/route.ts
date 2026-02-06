@@ -12,44 +12,65 @@ export async function POST(req: Request) {
         const body = await req.json()
         console.log('M-Pesa Callback Received:', JSON.stringify(body, null, 2))
 
-        const { ResultCode, ResultDesc, CheckoutRequestID, CallbackMetadata } = body.Body.stkCallback
+        const { ResultCode, ResultDesc, CheckoutRequestID } = body.Body.stkCallback
+
+        // 1. Find the transaction related to this checkout request using the metadata
+        const { data: transaction, error: tError } = await supabaseAdmin
+            .from('transactions')
+            .select('*')
+            .contains('metadata', { checkout_request_id: CheckoutRequestID })
+            .single()
+
+        if (tError || !transaction) {
+            console.error('Transaction not found for CheckoutRequestID:', CheckoutRequestID)
+            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Success' }) // M-Pesa requires 0 even if we can't find it
+        }
 
         if (ResultCode === 0) {
             // Payment Successful
-            const amount = CallbackMetadata.Item.find((i: any) => i.Name === 'Amount')?.Value
-            const mpesaReceipt = CallbackMetadata.Item.find((i: any) => i.Name === 'MpesaReceiptNumber')?.Value
-            const phone = CallbackMetadata.Item.find((i: any) => i.Name === 'PhoneNumber')?.Value
+            const amount = body.Body.stkCallback.CallbackMetadata.Item.find((i: any) => i.Name === 'Amount')?.Value
+            const mpesaReceipt = body.Body.stkCallback.CallbackMetadata.Item.find((i: any) => i.Name === 'MpesaReceiptNumber')?.Value
 
-            // 1. Find the transaction related to this checkout request
-            // Typically you would store the CheckoutRequestID in the transaction record when initiating
-            // For now, we'll try to find the pending transaction for this user/order 
-            // Better implementation: Map CheckoutRequestID to Transaction record in a DB
-
-            // 2. Update the transaction
-            const { data: transaction, error: tError } = await supabaseAdmin
+            // Update the transaction
+            await supabaseAdmin
                 .from('transactions')
                 .update({
                     status: 'completed',
                     mpesa_receipt_number: mpesaReceipt,
                     completed_at: new Date().toISOString()
                 })
-                .eq('status', 'pending') // Simplified for demo
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .select()
-                .single()
+                .eq('id', transaction.id)
 
-            if (transaction) {
-                // 3. Update the order status to 'paid'
+            // Update the order status to 'paid'
+            if (transaction.order_id) {
                 await supabaseAdmin
                     .from('orders')
                     .update({ status: 'paid' })
                     .eq('id', transaction.order_id)
             }
 
+            console.log(`Payment confirmed for Order: ${transaction.order_id}`)
+
         } else {
             // Payment Failed
-            console.log(`Payment failed: ${ResultDesc}`)
+            console.log(`Payment failed (${ResultCode}): ${ResultDesc}`)
+
+            // Delete the order and transaction as requested (cleanup)
+            if (transaction.order_id) {
+                // Deleting the order will cascade to order_items
+                await supabaseAdmin
+                    .from('orders')
+                    .delete()
+                    .eq('id', transaction.order_id)
+
+                console.log(`Deleted failed Order: ${transaction.order_id}`)
+            }
+
+            // Also delete the transaction record
+            await supabaseAdmin
+                .from('transactions')
+                .delete()
+                .eq('id', transaction.id)
         }
 
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Success' })

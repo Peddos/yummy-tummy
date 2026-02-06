@@ -91,7 +91,12 @@ export default function CheckoutPage() {
             })
 
             const mpesaData = await mpesaResponse.json()
-            if (!mpesaResponse.ok) throw new Error(mpesaData.error || 'M-Pesa payment failed to initiate')
+            if (!mpesaResponse.ok) {
+                // Cleanup: Delete the order if STK push initiation failed
+                // This follows the requirement: "if fails do not record"
+                await fetch(`/api/orders/${orderData.id}`, { method: 'DELETE' }).catch(() => { })
+                throw new Error(mpesaData.error || 'M-Pesa payment failed to initiate. Please try again.')
+            }
 
             // Detect if this was a simulation
             if (mpesaData.ResponseDescription?.includes('Simulated')) {
@@ -104,6 +109,7 @@ export default function CheckoutPage() {
 
         } catch (err: any) {
             setError(err.message)
+            setOrderId(null) // Reset order ID since it's likely being deleted
         } finally {
             setLoading(false)
         }
@@ -238,6 +244,12 @@ export default function CheckoutPage() {
                                         <p className="text-xs text-gray-500 mt-2">
                                             A payment prompt will be sent to this number.
                                         </p>
+                                        <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100/50">
+                                            <p className="text-[10px] text-amber-700 leading-tight">
+                                                <span className="font-bold flex items-center gap-1 mb-0.5"><AlertCircle className="w-3 h-3" /> Auto-Cleanup Policy</span>
+                                                If the payment is cancelled or fails, the order is automatically deleted to keep your dashboard clean.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </>
