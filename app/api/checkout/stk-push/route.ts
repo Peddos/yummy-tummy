@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/api'
+import { supabaseAdmin } from '@/lib/supabase/server'
 import { mpesa } from '@/lib/mpesa/daraja'
 import { formatPhoneForMpesa } from '@/lib/utils'
 
@@ -53,6 +54,24 @@ export async function POST(req: Request) {
             accountReference: orderId.substring(0, 12).toUpperCase(),
             transactionDesc: `Payment for Order ${orderId}`
         })
+
+        // Save the STK Push request IDs to the transaction metadata so we can find it in the callback
+        if (response.ResponseCode === '0') {
+            const { error: txError } = await supabaseAdmin
+                .from('transactions')
+                .update({
+                    metadata: {
+                        checkout_request_id: response.CheckoutRequestID,
+                        merchant_request_id: response.MerchantRequestID,
+                    }
+                })
+                .eq('order_id', orderId)
+                .eq('type', 'customer_payment')
+
+            if (txError) {
+                console.error('Failed to update transaction metadata:', txError)
+            }
+        }
 
         return NextResponse.json(response)
 

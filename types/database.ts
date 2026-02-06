@@ -109,6 +109,8 @@ export interface Database {
                     longitude?: number | null
                     image_url?: string | null
                     is_active?: boolean
+                    total_earnings?: number
+                    pending_earnings?: number
                 }
             }
             riders: {
@@ -138,6 +140,8 @@ export interface Database {
                     vehicle_type?: string
                     vehicle_number?: string | null
                     is_available?: boolean
+                    total_earnings?: number
+                    pending_earnings?: number
                 }
             }
             menu_categories: {
@@ -237,6 +241,13 @@ export interface Database {
                 Update: {
                     rider_id?: string | null
                     status?: OrderStatus
+                    subtotal?: number
+                    delivery_fee?: number
+                    total?: number
+                    delivery_address?: string
+                    delivery_latitude?: number | null
+                    delivery_longitude?: number | null
+                    delivery_notes?: string | null
                     confirmed_at?: string | null
                     ready_at?: string | null
                     picked_up_at?: string | null
@@ -306,9 +317,18 @@ export interface Database {
                     completed_at?: string | null
                 }
                 Update: {
+                    order_id?: string | null
+                    user_id?: string | null
+                    type?: TransactionType
                     status?: TransactionStatus
+                    amount?: number
                     mpesa_receipt_number?: string | null
                     mpesa_transaction_id?: string | null
+                    phone_number?: string | null
+                    vendor_share?: number | null
+                    rider_share?: number | null
+                    platform_commission?: number | null
+                    metadata?: Json | null
                     completed_at?: string | null
                 }
             }

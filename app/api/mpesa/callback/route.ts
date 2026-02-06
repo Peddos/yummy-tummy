@@ -33,19 +33,31 @@ export async function POST(request: NextRequest) {
 
         // ResultCode 0 means success
         if (ResultCode === 0) {
+            // 1. Fetch the actual order to get dynamic pricing (subtotal, delivery fee)
+            const { data: order, error: orderFetchError } = await supabaseAdmin
+                .from('orders')
+                .select('*')
+                .eq('id', transaction.order_id)
+                .single()
+
+            if (orderFetchError || !order) {
+                console.error('Order not found for transaction:', transaction.order_id)
+                return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+            }
+
             // Extract payment details from callback metadata
             const metadata = CallbackMetadata?.Item || []
             const mpesaReceiptNumber = metadata.find((item: any) => item.Name === 'MpesaReceiptNumber')?.Value
             const transactionDate = metadata.find((item: any) => item.Name === 'TransactionDate')?.Value
             const phoneNumber = metadata.find((item: any) => item.Name === 'PhoneNumber')?.Value
 
-            // Calculate payment breakdown
+            // 2. Calculate payment breakdown based on ACTUAL order fees
             const platformCommission = transaction.amount * (parseFloat(process.env.PLATFORM_COMMISSION || '10') / 100)
-            const deliveryFee = parseFloat(process.env.DELIVERY_FEE || '100')
+            const deliveryFee = order.delivery_fee
             const vendorShare = transaction.amount - platformCommission - deliveryFee
             const riderShare = deliveryFee
 
-            // Update transaction as completed
+            // 3. Update transaction as completed
             const { error: updateTxError } = await supabaseAdmin
                 .from('transactions')
                 .update({
@@ -68,35 +80,25 @@ export async function POST(request: NextRequest) {
                 console.error('Failed to update transaction:', updateTxError)
             }
 
-            // Update order status to paid
-            if (transaction.order_id) {
-                const { error: updateOrderError } = await supabaseAdmin
-                    .from('orders')
-                    .update({
-                        status: 'paid',
-                    })
-                    .eq('id', transaction.order_id)
+            // 4. Update order status to paid
+            const { error: updateOrderError } = await supabaseAdmin
+                .from('orders')
+                .update({
+                    status: 'paid',
+                })
+                .eq('id', order.id)
 
-                if (updateOrderError) {
-                    console.error('Failed to update order:', updateOrderError)
-                }
-
-                // Update vendor pending earnings
-                const { data: order } = await supabaseAdmin
-                    .from('orders')
-                    .select('vendor_id')
-                    .eq('id', transaction.order_id)
-                    .single()
-
-                if (order) {
-                    await supabaseAdmin.rpc('increment', {
-                        table_name: 'vendors',
-                        row_id: order.vendor_id,
-                        column_name: 'pending_earnings',
-                        amount: vendorShare,
-                    }).catch(console.error)
-                }
+            if (updateOrderError) {
+                console.error('Failed to update order:', updateOrderError)
             }
+
+            // 5. Update vendor pending earnings
+            await supabaseAdmin.rpc('increment', {
+                table_name: 'vendors',
+                row_id: order.vendor_id,
+                column_name: 'pending_earnings',
+                amount: vendorShare,
+            }).catch(console.error)
 
             console.log('Payment successful:', mpesaReceiptNumber)
         } else {
