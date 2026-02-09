@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/lib/store/cart'
 import { formatCurrency, validatePhoneNumber } from '@/lib/utils'
-import { ArrowLeft, MapPin, Phone, CreditCard, ChevronRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react'
+import {
+    ArrowLeft, MapPin, Phone, CreditCard, ChevronRight,
+    Loader2, AlertCircle, CheckCircle2, Package, NotepadText,
+    ShieldCheck, Info, Wallet
+} from 'lucide-react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
 
@@ -13,7 +17,7 @@ export default function CheckoutPage() {
     const { items, vendorId, getTotal, clearCart } = useCart()
 
     const [loading, setLoading] = useState(false)
-    const [step, setStep] = useState(1) // 1: Address, 2: Payment, 3: Success
+    const [step, setStep] = useState(1) // 1: Checkout, 2: Success
     const [formData, setFormData] = useState({
         address: '',
         notes: '',
@@ -28,10 +32,9 @@ export default function CheckoutPage() {
     const total = subtotal + deliveryFee
 
     useEffect(() => {
-        if (items.length === 0 && step !== 3) {
+        if (items.length === 0 && step !== 2) {
             router.push('/customer')
         }
-        // Prefill phone from metadata if available
         checkUserMeta()
     }, [items.length])
 
@@ -59,7 +62,6 @@ export default function CheckoutPage() {
         setLoading(true)
 
         try {
-            // 1. Create the order in the database
             const orderResponse = await fetch('/api/orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -79,7 +81,6 @@ export default function CheckoutPage() {
 
             setOrderId(orderData.id)
 
-            // 2. Initiate M-Pesa STK Push
             const mpesaResponse = await fetch('/api/checkout/stk-push', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -92,237 +93,251 @@ export default function CheckoutPage() {
 
             const mpesaData = await mpesaResponse.json()
             if (!mpesaResponse.ok) {
-                // Cleanup: Delete the order if STK push initiation failed
-                // This follows the requirement: "if fails do not record"
                 await fetch(`/api/orders/${orderData.id}`, { method: 'DELETE' }).catch(() => { })
                 throw new Error(mpesaData.error || 'M-Pesa payment failed to initiate. Please try again.')
             }
 
-            // Detect if this was a simulation
             if (mpesaData.ResponseDescription?.includes('Simulated')) {
                 setIsSimulated(true)
             }
 
-            // 3. Move to success/waiting state
-            setStep(3)
+            setStep(2)
             clearCart()
 
         } catch (err: any) {
             setError(err.message)
-            setOrderId(null) // Reset order ID since it's likely being deleted
+            setOrderId(null)
         } finally {
             setLoading(false)
         }
     }
 
+    if (step === 2) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+                <div className="max-w-md w-full animate-in zoom-in-95 duration-500">
+                    <div className="card p-10 text-center shadow-2xl border-none">
+                        <div className="w-24 h-24 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                            <CheckCircle2 className="w-14 h-14" />
+                        </div>
+                        <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Order Secured!</h2>
+
+                        <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
+                            {isSimulated ? (
+                                <div className="space-y-3">
+                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                        <Info className="w-3.5 h-3.5" />
+                                        Sandbox Verification
+                                    </div>
+                                    <p className="text-gray-500 text-sm font-medium">
+                                        Payment auto-confirmed for testing. Your delicious meal is being prepared!
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-gray-600 text-sm font-medium leading-relaxed">
+                                    Final step: Check your phone for the M-Pesa STK prompt to authorize <span className="font-black text-gray-900 underline decoration-[var(--color-primary)] decoration-2">{formatCurrency(total)}</span>.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-4">
+                            <Link href="/customer/orders" className="btn btn-primary w-full py-4 text-lg shadow-xl shadow-[var(--color-primary)]/20 active:scale-95 transition-all">
+                                Track My Order
+                            </Link>
+                            <Link href="/customer" className="btn btn-outline w-full py-4 text-gray-500 font-bold active:scale-95 transition-all border-gray-200">
+                                Back to Discovery
+                            </Link>
+                        </div>
+
+                        <div className="mt-8 flex items-center justify-center gap-2 text-gray-400">
+                            <ShieldCheck className="w-4 h-4" />
+                            <span className="text-[10px] uppercase font-black tracking-widest">Encrypted Checkout</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            {/* Simple Header */}
-            <header className="bg-white border-b px-4 py-4 sticky top-0 z-10 shadow-sm">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
-                    <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition">
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="hidden sm:inline font-medium">Back</span>
+            {/* Header */}
+            <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+                    <button onClick={() => router.back()} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+                        <ArrowLeft className="w-6 h-6" />
                     </button>
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                        Checkout
-                    </h1>
+                    <div className="flex flex-col items-center">
+                        <h1 className="text-sm font-black text-gray-900 uppercase tracking-widest">Secure Checkout</h1>
+                        <p className="text-[10px] font-bold text-gray-400">{items.length} Items • Finalize Order</p>
+                    </div>
                     <div className="w-10" />
                 </div>
             </header>
 
-            <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                    {/* Left Column: Forms */}
+            <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                    {/* Delivery & Payment Info */}
                     <div className="lg:col-span-2 space-y-6">
-                        {step === 3 ? (
-                            /* Success View */
-                            <div className="bg-white rounded-3xl p-10 text-center shadow-sm border border-green-100 animate-in fade-in zoom-in duration-500">
-                                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <CheckCircle2 className="w-12 h-12" />
+                        {/* Address */}
+                        <div className="card p-8 border-none shadow-sm">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center">
+                                    <MapPin className="w-6 h-6" />
                                 </div>
-                                <h2 className="text-3xl font-black text-gray-900 mb-4">Payment Initiated!</h2>
-                                {isSimulated ? (
-                                    <div className="mb-8">
-                                        <div className="inline-block px-4 py-2 bg-blue-50 text-blue-700 rounded-full text-xs font-black uppercase tracking-widest mb-4">
-                                            Development Mode
-                                        </div>
-                                        <p className="text-gray-600 max-w-md mx-auto">
-                                            M-Pesa is not configured, so your payment has been <span className="text-green-600 font-bold">Auto-Verified</span> for testing.
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <p className="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
-                                        Please check your phone for the M-Pesa prompt. Once you pay <span className="font-bold text-gray-900">{formatCurrency(total)}</span>, your order will be <span className="text-blue-600 font-bold">automatically confirmed</span> and visible in your tracker.
-                                    </p>
-                                )}
-                                <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                                    <Link
-                                        href="/customer/orders"
-                                        className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200"
-                                    >
-                                        Track Order
-                                    </Link>
-                                    <Link
-                                        href="/customer"
-                                        className="bg-gray-100 text-gray-700 px-8 py-3 rounded-xl font-bold hover:bg-gray-200 transition"
-                                    >
-                                        Back to Home
-                                    </Link>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 leading-none mb-1">Delivery Destination</h2>
+                                    <p className="text-gray-400 text-xs font-medium">Where should we drop off your order?</p>
                                 </div>
                             </div>
-                        ) : (
-                            /* Checkout Forms */
-                            <>
-                                {/* Delivery Address */}
-                                <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 relative overflow-hidden">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                                            <MapPin className="w-6 h-6" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-gray-900">Delivery Details</h3>
-                                    </div>
 
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1">Street Address / Apartment</label>
-                                            <input
-                                                type="text"
-                                                value={formData.address}
-                                                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                                placeholder="e.g., Central Park Towers, Apt 4B"
-                                                className="w-full px-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 transition"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-700 mb-1">Delivery Notes (Optional)</label>
-                                            <textarea
-                                                rows={2}
-                                                value={formData.notes}
-                                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                                placeholder="e.g., Ring the doorbell, leave at the gate..."
-                                                className="w-full px-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 transition resize-none"
-                                            />
-                                        </div>
+                            <div className="space-y-6">
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Street Address / Apartment</label>
+                                    <input
+                                        type="text"
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                        placeholder="e.g., Central Park Towers, Apt 4B"
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-[var(--color-primary)] outline-none transition-all"
+                                    />
+                                </div>
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Delivery Instructions (Optional)</label>
+                                    <div className="relative">
+                                        <NotepadText className="absolute left-4 top-4 w-5 h-5 text-gray-300 group-focus-within:text-[var(--color-primary)] transition-colors" />
+                                        <textarea
+                                            rows={2}
+                                            value={formData.notes}
+                                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                            placeholder="Gate code, allergies, or specific drop-off spots..."
+                                            className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-[var(--color-primary)] outline-none transition-all min-h-[100px]"
+                                        />
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                {/* Payment Method */}
-                                <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className="p-2 bg-green-50 text-green-600 rounded-xl">
-                                            <Phone className="w-6 h-6" />
-                                        </div>
-                                        <h3 className="text-xl font-bold text-gray-900">Payment Method</h3>
+                        {/* Payment */}
+                        <div className="card p-8 border-none shadow-sm">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="w-12 h-12 bg-green-50 text-green-500 rounded-2xl flex items-center justify-center">
+                                    <Wallet className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-gray-900 leading-none mb-1">M-Pesa Express</h2>
+                                    <p className="text-gray-400 text-xs font-medium">Direct and secure mobile payment</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-green-50/50 border border-green-100 rounded-2xl p-5 flex items-center justify-between mb-8">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-white rounded-xl flex items-center justify-center shadow-sm p-2">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/1/15/M-PESA_LOGO-01.svg" alt="M-Pesa" className="w-full" />
                                     </div>
-
-                                    <div className="p-4 bg-green-50/50 border-2 border-green-500/20 rounded-2xl flex items-center justify-between mb-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
-                                                <img src="https://upload.wikimedia.org/wikipedia/commons/1/15/M-PESA_LOGO-01.svg" alt="M-Pesa" className="w-10" />
-                                            </div>
-                                            <div>
-                                                <p className="font-bold text-gray-900">M-Pesa STK Push</p>
-                                                <p className="text-xs text-gray-500">Fast & Secure Mobile Payment</p>
-                                            </div>
-                                        </div>
-                                        <CheckCircle2 className="w-6 h-6 text-green-600" />
-                                    </div>
-
                                     <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">M-Pesa Phone Number</label>
-                                        <div className="relative">
-                                            <input
-                                                type="tel"
-                                                value={formData.phone}
-                                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                placeholder="07XXXXXXXX"
-                                                className="w-full px-4 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 transition"
-                                            />
-                                        </div>
-                                        <p className="text-xs text-gray-500 mt-2">
-                                            A payment prompt will be sent to this number.
-                                        </p>
-                                        <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100/50">
-                                            <p className="text-[10px] text-amber-700 leading-tight">
-                                                <span className="font-bold flex items-center gap-1 mb-0.5"><AlertCircle className="w-3 h-3" /> Auto-Cleanup Policy</span>
-                                                If the payment is cancelled or fails, the order is automatically deleted to keep your dashboard clean.
-                                            </p>
-                                        </div>
+                                        <p className="font-black text-gray-900">Mobile Money</p>
+                                        <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Active • Instant Push</p>
                                     </div>
                                 </div>
-                            </>
-                        )}
+                                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-white">
+                                    <CheckCircle2 className="w-4 h-4" />
+                                </div>
+                            </div>
+
+                            <div className="group">
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Confirmation Phone Number</label>
+                                <div className="relative">
+                                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-[var(--color-primary)] transition-colors" />
+                                    <input
+                                        type="tel"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        placeholder="07XXXXXXXX"
+                                        className="w-full pl-11 pr-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-[var(--color-primary)] outline-none transition-all"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-gray-400 font-medium mt-3 flex items-center gap-1.5 ml-1">
+                                    <Info className="w-3 h-3" />
+                                    We'll trigger a secure STK push to this number.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Right Column: Summary */}
+                    {/* Order Summary */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 sticky top-24">
-                            <h3 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h3>
+                        <div className="card p-0 border-none shadow-xl sticky top-24 overflow-hidden">
+                            <div className="p-8">
+                                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6 border-b border-gray-50 pb-4">Invoice Summary</h3>
 
-                            <div className="space-y-4 mb-6 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                {items.map((item) => (
-                                    <div key={item.id} className="flex justify-between items-start gap-4">
-                                        <div className="flex-1">
-                                            <p className="text-sm font-bold text-gray-900">
-                                                <span className="text-blue-600">{item.quantity}x</span> {item.name}
-                                            </p>
-                                            {item.specialInstructions && (
-                                                <p className="text-xs text-gray-500 truncate">{item.specialInstructions}</p>
-                                            )}
+                                <div className="space-y-5 mb-8 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    {items.map((item) => (
+                                        <div key={item.id} className="flex justify-between items-start gap-4">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="w-6 h-6 rounded-md bg-gray-50 flex items-center justify-center text-[10px] font-black text-[var(--color-primary)] border border-gray-100">
+                                                        {item.quantity}
+                                                    </span>
+                                                    <p className="font-bold text-gray-800 text-sm leading-tight">
+                                                        {item.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <p className="text-gray-900 font-black text-sm whitespace-nowrap">{formatCurrency(item.price * item.quantity)}</p>
                                         </div>
-                                        <p className="text-sm font-bold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
+                                    ))}
+                                </div>
+
+                                <div className="space-y-3 pt-6 border-t border-gray-50">
+                                    <div className="flex justify-between text-xs font-bold text-gray-400">
+                                        <span>SUBTOTAL</span>
+                                        <span>{formatCurrency(subtotal)}</span>
                                     </div>
-                                ))}
-                            </div>
+                                    <div className="flex justify-between text-xs font-bold text-gray-400">
+                                        <span>LOGISTICS FEE</span>
+                                        <span>{formatCurrency(deliveryFee)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-end pt-4">
+                                        <div>
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Payable</p>
+                                            <p className="text-3xl font-black text-gray-900 tracking-tighter leading-none">
+                                                {formatCurrency(total)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
 
-                            <div className="space-y-3 pt-6 border-t border-dashed">
-                                <div className="flex justify-between text-gray-600">
-                                    <span>Subtotal</span>
-                                    <span>{formatCurrency(subtotal)}</span>
-                                </div>
-                                <div className="flex justify-between text-gray-600">
-                                    <span>Delivery Fee</span>
-                                    <span>{formatCurrency(deliveryFee)}</span>
-                                </div>
-                                <div className="flex justify-between text-xl font-black text-gray-900 pt-3">
-                                    <span>Total</span>
-                                    <span className="text-blue-600">{formatCurrency(total)}</span>
-                                </div>
-                            </div>
+                                {error && (
+                                    <div className="mt-8 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl text-[10px] font-black uppercase tracking-wider flex gap-3 items-center animate-in shake-in-1">
+                                        <AlertCircle className="w-5 h-5 flex-shrink-0 opacity-50" />
+                                        <p>{error}</p>
+                                    </div>
+                                )}
 
-                            {error && (
-                                <div className="mt-6 p-4 bg-red-50 text-red-600 rounded-2xl text-sm flex gap-3 animate-shake">
-                                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                                    <p className="font-medium">{error}</p>
-                                </div>
-                            )}
-
-                            {step !== 3 && (
                                 <button
                                     onClick={handlePlaceOrder}
                                     disabled={loading || items.length === 0}
-                                    className={`
-                                        w-full mt-8 py-4 rounded-2xl font-black text-white text-lg
-                                        transition-all duration-300 shadow-lg
-                                        ${loading ? 'bg-blue-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:scale-[1.02] active:scale-95 shadow-blue-200'}
-                                    `}
+                                    className="w-full btn btn-primary py-5 mt-8 text-lg font-black flex items-center justify-center gap-3 shadow-xl shadow-[var(--color-primary)]/30 active:scale-95 transition-all"
                                 >
                                     {loading ? (
-                                        <div className="flex items-center justify-center gap-2">
+                                        <>
                                             <Loader2 className="w-6 h-6 animate-spin" />
                                             <span>Processing...</span>
-                                        </div>
+                                        </>
                                     ) : (
-                                        `Pay ${formatCurrency(total)}`
+                                        <>
+                                            <span>Pay {formatCurrency(total)}</span>
+                                            <ChevronRight className="w-5 h-5" />
+                                        </>
                                     )}
                                 </button>
-                            )}
+                            </div>
 
-                            <p className="mt-4 text-center text-xs text-gray-400">
-                                Secure payment powered by M-Pesa Daraja
-                            </p>
+                            <div className="bg-gray-50 p-4 flex items-center justify-center gap-2 border-t border-gray-100">
+                                <ShieldCheck className="w-4 h-4 text-gray-400" />
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-[0.2em]">Secure Checkout Service</span>
+                            </div>
                         </div>
                     </div>
                 </div>

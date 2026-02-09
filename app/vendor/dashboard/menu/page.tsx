@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
-import { Plus, Edit2, Trash2, Power, PowerOff, Loader2, Image as ImageIcon, Search, Filter } from 'lucide-react'
+import { Plus, Edit2, Trash2, Power, PowerOff, Loader2, Image as ImageIcon, Search, Filter, Layers, CheckCircle2, AlertCircle } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 
 export default function MenuManagementPage() {
@@ -14,6 +14,7 @@ export default function MenuManagementPage() {
     const [saving, setSaving] = useState(false)
     const [showModal, setShowModal] = useState(false)
     const [editingItem, setEditingItem] = useState<any>(null)
+    const [searchQuery, setSearchQuery] = useState('')
 
     const [formData, setFormData] = useState({
         name: '',
@@ -35,7 +36,6 @@ export default function MenuManagementPage() {
             return
         }
 
-        // Get vendor record for this user
         const { data: vendor, error: vError } = await supabase
             .from('vendors')
             .select('id')
@@ -49,12 +49,11 @@ export default function MenuManagementPage() {
 
         setVendorId(vendor.id)
 
-        // Fetch menu items
         const { data: items, error: iError } = await supabase
             .from('menu_items')
             .select('*')
             .eq('vendor_id', vendor.id)
-            .order('created_at', { ascending: false })
+            .order('name', { ascending: true })
 
         if (iError) console.error('Error fetching items:', iError)
         else setMenuItems(items || [])
@@ -107,7 +106,7 @@ export default function MenuManagementPage() {
     }
 
     const deleteItem = async (itemId: string) => {
-        if (!confirm('Are you sure you want to delete this item?')) return
+        if (!confirm('Delete this item from your menu?')) return
 
         const { error } = await supabase
             .from('menu_items')
@@ -117,20 +116,24 @@ export default function MenuManagementPage() {
         if (!error) fetchVendorAndMenu()
     }
 
+    const filteredItems = menuItems.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <Loader2 className="w-10 h-10 animate-spin text-blue-600" />
+            <Loader2 className="w-10 h-10 animate-spin text-[var(--color-primary)]" />
         </div>
     )
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <header className="bg-white border-b px-4 py-6 sticky top-0 z-10 shadow-sm">
-                <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-black text-gray-900">Menu Management</h1>
-                        <p className="text-sm text-gray-500 font-medium">Add and manage your restaurant items</p>
+                        <h1 className="text-xl font-bold text-gray-900">Menu Management</h1>
+                        <p className="text-xs text-gray-500 font-medium">Design and update your restaurant's digital menu</p>
                     </div>
                     <button
                         onClick={() => {
@@ -138,190 +141,164 @@ export default function MenuManagementPage() {
                             setFormData({ name: '', description: '', price: '', category: '', image_url: '', is_available: true })
                             setShowModal(true)
                         }}
-                        className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+                        className="btn btn-primary px-6 h-11 flex items-center gap-2"
                     >
                         <Plus className="w-5 h-5" />
-                        <span>Add New Item</span>
+                        <span>Add Item</span>
                     </button>
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto px-4 py-10">
-                {/* Stats / Toolbar */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-                    <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-lg">
-                        <p className="text-blue-100 font-bold uppercase tracking-widest text-xs">Total Items</p>
-                        <p className="text-4xl font-black mt-2">{menuItems.length}</p>
+            <main className="max-w-7xl mx-auto px-4 py-8">
+                {/* Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div className="card p-6 flex items-center gap-6">
+                        <div className="w-14 h-14 bg-[var(--color-primary-light)] text-[var(--color-primary)] rounded-2xl flex items-center justify-center">
+                            <Layers className="w-7 h-7" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Products</p>
+                            <p className="text-2xl font-bold text-gray-900">{menuItems.length}</p>
+                        </div>
                     </div>
-                    <div className="bg-green-600 rounded-3xl p-6 text-white shadow-lg">
-                        <p className="text-green-100 font-bold uppercase tracking-widest text-xs">Active Items</p>
-                        <p className="text-4xl font-black mt-2">{menuItems.filter(i => i.is_available).length}</p>
+                    <div className="card p-6 flex items-center gap-6">
+                        <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center">
+                            <CheckCircle2 className="w-7 h-7" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Active Live</p>
+                            <p className="text-2xl font-bold text-gray-900">{menuItems.filter(i => i.is_available).length}</p>
+                        </div>
                     </div>
-                    <div className="bg-white border text-gray-900 rounded-3xl p-6 shadow-sm">
-                        <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Categories</p>
-                        <p className="text-4xl font-black mt-2">
-                            {new Set(menuItems.map(i => i.category).filter(Boolean)).size || 0}
-                        </p>
+                    <div className="card p-6 flex items-center gap-6">
+                        <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center">
+                            <AlertCircle className="w-7 h-7" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Hidden Items</p>
+                            <p className="text-2xl font-bold text-gray-900">{menuItems.filter(i => !i.is_available).length}</p>
+                        </div>
                     </div>
                 </div>
 
-                {/* Menu Table/Grid */}
-                <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Item Detail</th>
-                                    <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Category</th>
-                                    <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Price</th>
-                                    <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                    <th className="px-6 py-4 text-xs font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {menuItems.map((item) => (
-                                    <tr key={item.id} className="hover:bg-gray-50/50 transition">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0">
-                                                    {item.image_url ? (
-                                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-gray-300">
-                                                            <ImageIcon className="w-6 h-6" />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <p className="font-bold text-gray-900">{item.name}</p>
-                                                    <p className="text-xs text-gray-400 line-clamp-1 max-w-[200px]">{item.description}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-bold uppercase">
-                                                {item.category || 'Standard'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 font-black text-gray-900">
-                                            {formatCurrency(item.price)}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button
-                                                onClick={() => toggleAvailability(item)}
-                                                className={`flex items-center gap-2 font-black text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full transition ${item.is_available
-                                                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                    }`}
-                                            >
-                                                {item.is_available ? <><Power className="w-3 h-3" /> Active</> : <><PowerOff className="w-3 h-3" /> Hidden</>}
-                                            </button>
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        setEditingItem(item)
-                                                        setFormData({
-                                                            name: item.name,
-                                                            description: item.description || '',
-                                                            price: item.price.toString(),
-                                                            category: item.category || '',
-                                                            image_url: item.image_url || '',
-                                                            is_available: item.is_available
-                                                        })
-                                                        setShowModal(true)
-                                                    }}
-                                                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition"
-                                                >
-                                                    <Edit2 className="w-5 h-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteItem(item.id)}
-                                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                {/* Toolbar */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Find an item by name or category..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="input pl-10 h-11 text-sm shadow-sm"
+                        />
                     </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-400 px-2 italic">{filteredItems.length} items showing</span>
+                    </div>
+                </div>
+
+                {/* Grid View (Better for Food Apps) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredItems.map((item) => (
+                        <div key={item.id} className="card hover:border-[var(--color-primary)] transition-all group overflow-hidden">
+                            <div className="flex gap-4 p-4">
+                                <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden flex-shrink-0 relative group">
+                                    {item.image_url ? (
+                                        <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                            <ImageIcon className="w-8 h-8" />
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={() => toggleAvailability(item)}
+                                        className={`absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-[2px]`}
+                                    >
+                                        {item.is_available ? <Power className="w-6 h-6 text-green-400" /> : <PowerOff className="w-6 h-6 text-red-400" />}
+                                    </button>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start">
+                                        <h3 className="font-bold text-gray-900 truncate group-hover:text-[var(--color-primary)] transition-colors">{item.name}</h3>
+                                        <span className={`w-2 h-2 rounded-full ${item.is_available ? 'bg-green-500' : 'bg-red-500'}`} />
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-2">{item.category || 'Standard'}</p>
+                                    <p className="text-lg font-bold text-[var(--color-primary)]">{formatCurrency(item.price)}</p>
+                                </div>
+                            </div>
+                            <div className="bg-gray-50/50 px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-gray-400 italic">Added {new Date(item.created_at).toLocaleDateString()}</span>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setEditingItem(item)
+                                            setFormData({
+                                                name: item.name,
+                                                description: item.description || '',
+                                                price: item.price.toString(),
+                                                category: item.category || '',
+                                                image_url: item.image_url || '',
+                                                is_available: item.is_available
+                                            })
+                                            setShowModal(true)
+                                        }}
+                                        className="p-1.5 text-gray-400 hover:text-[var(--color-primary)] transition-colors"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => deleteItem(item.id)}
+                                        className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </main>
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-[40px] w-full max-w-xl overflow-hidden shadow-2xl animate-in zoom-in duration-300">
-                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white">
-                            <h2 className="text-2xl font-black">{editingItem ? 'Edit Menu Item' : 'New Menu Item'}</h2>
-                            <p className="text-blue-100 text-sm">Tell your customers what's cooking!</p>
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
+                    <div className="bg-white rounded-[32px] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+                        <div className="p-8 border-b border-gray-100">
+                            <h2 className="text-2xl font-bold text-gray-900">{editingItem ? 'Update Item' : 'Create New Item'}</h2>
+                            <p className="text-sm text-gray-500 mt-1">Fill in the details for your menu selection</p>
                         </div>
 
-                        <form onSubmit={handleSaveItem} className="p-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="col-span-2">
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Item Name</label>
-                                    <input
-                                        required
-                                        type="text"
-                                        value={formData.name}
-                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                        className="w-full px-5 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 transition"
-                                        placeholder="e.g., Supreme Burger"
-                                    />
+                        <form onSubmit={handleSaveItem} className="p-8 space-y-5">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="label">Item Name</label>
+                                    <input required type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="input h-12" placeholder="Supreme Cheeseburger" />
                                 </div>
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Price (KSH)</label>
-                                    <input
-                                        required
-                                        type="number"
-                                        value={formData.price}
-                                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                                        className="w-full px-5 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 transition"
-                                        placeholder="500"
-                                    />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="label">Price (KSH)</label>
+                                        <input required type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} className="input h-12" placeholder="850" />
+                                    </div>
+                                    <div>
+                                        <label className="label">Category</label>
+                                        <input type="text" value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="input h-12" placeholder="Burgers" />
+                                    </div>
                                 </div>
-                                <div className="col-span-1">
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Category</label>
-                                    <input
-                                        type="text"
-                                        value={formData.category}
-                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        className="w-full px-5 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 transition"
-                                        placeholder="e.g., Burgers"
-                                    />
+                                <div>
+                                    <label className="label">Image URL (Optional)</label>
+                                    <input type="text" value={formData.image_url} onChange={(e) => setFormData({ ...formData, image_url: e.target.value })} className="input h-12" placeholder="https://images.unsplash.com/..." />
                                 </div>
-                                <div className="col-span-2">
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Description</label>
-                                    <textarea
-                                        rows={3}
-                                        value={formData.description}
-                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                        className="w-full px-5 py-3 bg-gray-50 border-0 rounded-2xl focus:ring-2 focus:ring-blue-500 transition resize-none"
-                                        placeholder="Add mouth-watering details..."
-                                    />
+                                <div>
+                                    <label className="label">Description</label>
+                                    <textarea rows={3} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="input min-h-[100px] py-3" placeholder="Describe the flavors..." />
                                 </div>
                             </div>
 
-                            <div className="flex gap-4 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowModal(false)}
-                                    className="flex-1 px-6 py-4 bg-gray-100 text-gray-600 rounded-2xl font-black hover:bg-gray-200 transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={saving}
-                                    className="flex-[2] px-6 py-4 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
-                                >
-                                    {saving && <Loader2 className="w-5 h-5 animate-spin" />}
-                                    {saving ? 'Saving...' : 'Save Product'}
+                            <div className="flex gap-3 pt-6">
+                                <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline flex-1 h-12">Cancel</button>
+                                <button type="submit" disabled={saving} className="btn btn-primary flex-[2] h-12">
+                                    {saving ? <Loader2 className="w-6 h-6 animate-spin" /> : editingItem ? 'Update Product' : 'Save Product'}
                                 </button>
                             </div>
                         </form>

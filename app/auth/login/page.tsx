@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase/client'
+import { Loader2, Mail, Lock, ArrowLeft } from 'lucide-react'
 
 function LoginContent() {
     const router = useRouter()
@@ -28,7 +29,6 @@ function LoginContent() {
 
             if (signInError) throw signInError
 
-            // Get user profile to check role
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('role')
@@ -37,7 +37,6 @@ function LoginContent() {
 
             if (profileError) throw profileError
 
-            // Redirect based on role
             const redirectMap: Record<string, string> = {
                 customer: '/customer',
                 vendor: '/vendor/dashboard',
@@ -54,79 +53,96 @@ function LoginContent() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md">
-                <div className="bg-white rounded-2xl shadow-xl p-8">
-                    <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            Welcome Back
-                        </h1>
-                        <p className="text-gray-600">Sign in to your {roleParam} account</p>
+                {/* Logo */}
+                <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-[var(--color-primary)] rounded-2xl mb-4">
+                        <span className="text-3xl">🍽️</span>
                     </div>
+                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+                    <p className="text-gray-500">Sign in to your {roleParam} account</p>
+                </div>
 
+                {/* Login Card */}
+                <div className="card p-8">
                     {error && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
                             {error}
                         </div>
                     )}
 
-                    <form onSubmit={handleLogin} className="space-y-6">
+                    <form onSubmit={handleLogin} className="space-y-5">
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                                 Email Address
                             </label>
-                            <input
-                                id="email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                required
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                                placeholder="you@example.com"
-                            />
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <input
+                                    id="email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    className="input pl-11"
+                                    placeholder="you@example.com"
+                                />
+                            </div>
                         </div>
 
                         <div>
                             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                                 Password
                             </label>
-                            <input
-                                id="password"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                required
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                                placeholder="••••••••"
-                            />
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                                <input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    className="input pl-11"
+                                    placeholder="••••••••"
+                                />
+                            </div>
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="btn btn-primary w-full py-3 text-base flex items-center justify-center gap-2"
                         >
-                            {loading ? 'Signing in...' : 'Sign In'}
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                    Signing in...
+                                </>
+                            ) : (
+                                'Sign In'
+                            )}
                         </button>
                     </form>
 
                     <div className="mt-6 text-center">
-                        <p className="text-gray-600">
+                        <p className="text-sm text-gray-600">
                             Don't have an account?{' '}
                             <Link
                                 href={`/auth/signup?role=${roleParam}`}
-                                className="text-blue-600 hover:text-blue-700 font-semibold"
+                                className="text-[var(--color-primary)] hover:underline font-medium"
                             >
                                 Sign up
                             </Link>
                         </p>
                     </div>
+                </div>
 
-                    <div className="mt-4 text-center">
-                        <Link href="/" className="text-sm text-gray-500 hover:text-gray-700">
-                            ← Back to home
-                        </Link>
-                    </div>
+                <div className="mt-6 text-center">
+                    <Link href="/" className="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center gap-1">
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to home
+                    </Link>
                 </div>
             </div>
         </div>
@@ -137,7 +153,7 @@ export default function LoginPage() {
     return (
         <Suspense fallback={
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <Loader2 className="w-10 h-10 animate-spin text-[var(--color-primary)]" />
             </div>
         }>
             <LoginContent />

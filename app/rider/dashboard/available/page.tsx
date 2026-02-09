@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { MapPin, Navigation, Package, Star, Clock, CheckCircle2, Loader2, RefreshCcw } from 'lucide-react'
+import { MapPin, Navigation, Package, Star, Clock, CheckCircle2, Loader2, RefreshCcw, ChevronRight } from 'lucide-react'
 
 export default function AvailableOrdersPage() {
     const router = useRouter()
@@ -15,14 +15,12 @@ export default function AvailableOrdersPage() {
     useEffect(() => {
         fetchAvailableOrders()
 
-        // Real-time listener for new ready orders
         const channel = supabase
-            .channel('rider-feed')
+            .channel('rider-feed-live')
             .on('postgres_changes', {
-                event: 'UPDATE',
+                event: '*',
                 schema: 'public',
-                table: 'orders',
-                filter: 'status=eq.ready_for_pickup'
+                table: 'orders'
             }, () => fetchAvailableOrders())
             .subscribe()
 
@@ -70,90 +68,100 @@ export default function AvailableOrdersPage() {
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <Loader2 className="w-10 h-10 animate-spin text-orange-600" />
+            <Loader2 className="w-10 h-10 animate-spin text-[var(--color-primary)]" />
         </div>
     )
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <header className="bg-white border-b px-4 py-8 sticky top-0 z-10 shadow-sm">
-                <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+                <div className="max-w-xl mx-auto px-4 h-20 flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-black text-gray-900">Order Feed</h1>
-                        <p className="text-gray-500 font-medium">Orders ready for pickup in your area</p>
+                        <h1 className="text-xl font-bold text-gray-900">Available Orders</h1>
+                        <p className="text-xs text-gray-500 font-medium">Accept and deliver nearby orders</p>
                     </div>
                     <button
                         onClick={() => { setLoading(true); fetchAvailableOrders(); }}
-                        className="p-3 bg-gray-50 text-orange-600 rounded-full hover:bg-orange-50 transition"
+                        className="w-10 h-10 flex items-center justify-center bg-gray-100 text-gray-600 rounded-full hover:bg-[var(--color-primary-light)] hover:text-[var(--color-primary)] transition-colors"
                     >
                         <RefreshCcw className="w-5 h-5" />
                     </button>
                 </div>
             </header>
 
-            <main className="max-w-4xl mx-auto px-4 py-10 space-y-6">
+            <main className="max-w-xl mx-auto px-4 py-8 space-y-6">
                 {orders.length === 0 ? (
-                    <div className="bg-white rounded-[40px] p-16 text-center shadow-lg border-2 border-dashed border-gray-100">
-                        <div className="text-7xl mb-6">🛵</div>
-                        <h3 className="text-2xl font-black text-gray-900 mb-2">Searching for orders...</h3>
-                        <p className="text-gray-500 max-w-xs mx-auto">Stay alert! New orders will appear here as soon as they are ready.</p>
+                    <div className="card p-16 text-center border-dashed border-2 border-gray-200">
+                        <div className="text-6xl mb-6 grayscale opacity-50">🛵</div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">No orders available</h3>
+                        <p className="text-gray-500 text-sm max-w-xs mx-auto">New orders will appear here automatically when they are ready for pickup.</p>
                     </div>
                 ) : (
                     orders.map((order) => (
-                        <div key={order.id} className="bg-white rounded-[40px] overflow-hidden shadow-sm border border-gray-100 hover:shadow-xl transition-shadow duration-300">
-                            <div className="p-8">
-                                <div className="flex justify-between items-start mb-8">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-orange-600 uppercase tracking-[0.2em]">New Order Available</p>
-                                        <h3 className="text-2xl font-black text-gray-900">{order.vendor?.business_name}</h3>
-                                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                                            <span className="font-bold text-gray-600">{order.vendor?.rating} Rating</span>
-                                            <span>•</span>
-                                            <span>Ready for pickup</span>
-                                        </div>
+                        <div key={order.id} className="card p-6 overflow-hidden border-l-4 border-l-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all group">
+                            <div className="flex justify-between items-start mb-6">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-widest px-2 py-0.5 bg-[var(--color-primary-light)] rounded-md">New Request</span>
+                                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">#{order.order_number}</span>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-2xl font-black text-orange-600">{formatCurrency(150)}</p>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Est. Earning</p>
+                                    <h3 className="text-2xl font-bold text-gray-900 group-hover:text-[var(--color-primary)] transition-colors">{order.vendor?.business_name}</h3>
+                                    <div className="flex items-center gap-3 mt-1 font-bold">
+                                        <div className="flex items-center gap-1 text-sm text-amber-500">
+                                            <Star className="w-4 h-4 fill-current" />
+                                            <span>{order.vendor?.rating || '4.8'}</span>
+                                        </div>
+                                        <span className="text-xs text-gray-400 font-medium">• Ready for pickup</span>
                                     </div>
                                 </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
-                                    <div className="relative pl-10">
-                                        <div className="absolute left-0 top-0 w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-                                            <Package className="w-4 h-4" />
-                                        </div>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pickup From</p>
-                                        <p className="font-bold text-gray-900 leading-tight">{order.vendor?.address}</p>
-                                    </div>
-                                    <div className="relative pl-10">
-                                        <div className="absolute left-0 top-0 w-8 h-8 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center">
-                                            <MapPin className="w-4 h-4" />
-                                        </div>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Deliver To</p>
-                                        <p className="font-bold text-gray-900 leading-tight">{order.delivery_address}</p>
-                                    </div>
+                                <div className="text-right">
+                                    <p className="text-2xl font-bold text-[var(--color-primary)]">{formatCurrency(150)}</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Est. Reward</p>
                                 </div>
-
-                                <button
-                                    onClick={() => acceptOrder(order.id)}
-                                    disabled={!!accepting}
-                                    className={`
-                                        w-full py-5 rounded-2xl font-black text-white text-lg 
-                                        transition-all shadow-lg flex items-center justify-center gap-3
-                                        ${accepting === order.id
-                                            ? 'bg-orange-300'
-                                            : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:scale-[1.02] active:scale-95 shadow-orange-100'}
-                                    `}
-                                >
-                                    {accepting === order.id ? <Loader2 className="w-6 h-6 animate-spin" /> : <Navigation className="w-6 h-6" />}
-                                    Accept Order & Go
-                                </button>
                             </div>
-                            <div className="bg-gray-50 px-8 py-3 flex justify-between items-center">
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID: #{order.order_number}</span>
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ready Since: {formatDate(order.ready_at || order.created_at)}</span>
+
+                            <div className="space-y-6 mb-8 relative">
+                                <div className="absolute left-[13px] top-6 bottom-6 w-0.5 bg-dashed border-l-2 border-dashed border-gray-200" />
+
+                                <div className="flex gap-4 relative">
+                                    <div className="w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center z-10">
+                                        <Package className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Pickup</p>
+                                        <p className="text-sm font-bold text-gray-700">{order.vendor?.address}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 relative">
+                                    <div className="w-7 h-7 bg-orange-50 text-orange-600 rounded-lg flex items-center justify-center z-10">
+                                        <MapPin className="w-4 h-4" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Deliver</p>
+                                        <p className="text-sm font-bold text-gray-700">{order.delivery_address}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => acceptOrder(order.id)}
+                                disabled={!!accepting}
+                                className="btn btn-primary w-full py-5 text-lg flex items-center justify-center gap-3 relative overflow-hidden group/btn"
+                            >
+                                {accepting === order.id ? (
+                                    <Loader2 className="w-6 h-6 animate-spin" />
+                                ) : (
+                                    <>
+                                        <Navigation className="w-6 h-6 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
+                                        <span>Accept & Go</span>
+                                    </>
+                                )}
+                            </button>
+
+                            <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-widest italic">
+                                <span>Rider ID Verification Required</span>
+                                <span>{formatDate(order.ready_at || order.created_at)}</span>
                             </div>
                         </div>
                     ))
