@@ -70,11 +70,11 @@ export default function VendorDashboard() {
             .eq('vendor_id', user.id)
             .eq('is_available', true)
 
-        const earnings = orders?.filter(o => o.status === 'completed')
-            .reduce((sum, o) => sum + Number(o.subtotal), 0) || 0
+        const earnings = (orders as any[])?.filter((o: any) => o.status === 'delivered' || o.status === 'completed')
+            .reduce((sum: number, o: any) => sum + Number(o.subtotal || 0), 0) || 0
 
         setStats({
-            pendingOrders: orders?.filter(o => !['delivered', 'completed', 'cancelled', 'pending_payment'].includes(o.status)).length || 0,
+            pendingOrders: (orders as any[])?.filter((o: any) => !['delivered', 'completed', 'cancelled', 'pending_payment'].includes(o.status)).length || 0,
             totalEarnings: earnings,
             activeMenu: menuCount || 0,
             recentOrders: orders?.slice(0, 5) || []
@@ -296,6 +296,13 @@ export default function VendorDashboard() {
                                 <Utensils className="w-5 h-5" />
                                 Menu Items
                             </Link>
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition"
+                            >
+                                <LogOut className="w-5 h-5" />
+                                Sign Out
+                            </button>
                         </nav>
                     </div>
                 </div>

@@ -7,7 +7,8 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import StatusBadge from '@/components/ui/StatusBadge'
 import {
     Clock, CheckCircle2, Package, Truck,
-    XCircle, Loader2, Phone, MapPin, Search, Calendar, ChevronRight
+    XCircle, Loader2, Phone, MapPin, Search, Calendar, ChevronRight,
+    Trash2
 } from 'lucide-react'
 
 export default function VendorOrdersPage() {
@@ -57,11 +58,22 @@ export default function VendorOrdersPage() {
         setUpdating(orderId)
         const { error } = await supabase
             .from('orders')
-            .update({ status })
+            .update({ status } as any)
             .eq('id', orderId)
 
         if (!error) fetchOrders()
         setUpdating(null)
+    }
+
+    const deleteOrder = async (id: string) => {
+        if (!confirm('Confirm deletion of this record? This action is logged for accountability.')) return
+        try {
+            const response = await fetch(`/api/orders/${id}`, { method: 'DELETE' })
+            if (response.ok) fetchOrders()
+            else alert('Access Denied: You may not have authority to purge this record.')
+        } catch (error) {
+            console.error('Delete error:', error)
+        }
     }
 
     if (loading) return (
@@ -117,6 +129,15 @@ export default function VendorOrdersPage() {
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <span className="text-xs font-black text-[var(--color-primary)]">#{order.order_number}</span>
                                                     <StatusBadge status={order.status} />
+                                                    {['cancelled', 'pending_payment'].includes(order.status) && (
+                                                        <button
+                                                            onClick={() => deleteOrder(order.id)}
+                                                            className="p-1 text-gray-300 hover:text-red-500 transition-colors"
+                                                            title="Purge Record"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 <h3 className="text-xl font-bold text-gray-900">{order.customer?.full_name}</h3>
                                                 <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 font-medium">

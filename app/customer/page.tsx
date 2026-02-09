@@ -107,7 +107,7 @@ export default function CustomerDashboard() {
                                 <h1 className="text-sm font-black text-gray-900 uppercase tracking-tighter leading-none mb-1">Delivering To</h1>
                                 <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--color-primary)] uppercase tracking-widest leading-none">
                                     <MapPin className="w-2.5 h-2.5" />
-                                    <span>Current Location • Nairobi</span>
+                                    <span>Current Location</span>
                                     <ChevronRight className="w-2.5 h-2.5" />
                                 </div>
                             </div>

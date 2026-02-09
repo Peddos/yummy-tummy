@@ -49,6 +49,17 @@ export default function OrdersPage() {
         }
     }
 
+    const deleteOrder = async (id: string) => {
+        if (!confirm('Permanently remove this order from your records?')) return
+        try {
+            const response = await fetch(`/api/orders/${id}`, { method: 'DELETE' })
+            if (response.ok) fetchOrders()
+            else alert('Deletion restricted by system rules.')
+        } catch (error) {
+            console.error('Delete error:', error)
+        }
+    }
+
     const clearHistory = async () => {
         if (!confirm('Clear order history? Active orders will remain.')) return
 
@@ -141,7 +152,21 @@ export default function OrdersPage() {
                                                     <p className="text-xs font-bold text-gray-900 leading-none">#{order.order_number}</p>
                                                 </div>
                                             </div>
-                                            <StatusBadge status={order.status} />
+                                            <div className="flex items-center gap-3">
+                                                <StatusBadge status={order.status} />
+                                                {['pending_payment', 'cancelled'].includes(order.status) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault()
+                                                            deleteOrder(order.id)
+                                                        }}
+                                                        className="p-1.5 text-gray-300 hover:text-red-500 transition-colors bg-white rounded-lg border border-gray-100 shadow-sm"
+                                                        title="Delete Instance"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Core Content */}

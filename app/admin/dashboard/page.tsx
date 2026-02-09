@@ -7,7 +7,8 @@ import {
     LayoutDashboard, Users, Store, Bike, TrendingUp,
     Shield, Bell, Search, Loader2, Package, Wallet, CheckCircle,
     AlertTriangle, ArrowUpRight, ArrowDownRight, MoreVertical, Star,
-    LogOut, Settings, Filter, Download, List, ChevronRight
+    LogOut, Settings, Filter, Download, List, ChevronRight, Trash2,
+    Truck
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -37,6 +38,7 @@ export default function AdminDashboard() {
     })
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState('overview')
+    const [sortBy, setSortBy] = useState<'date' | 'sales'>('date')
 
     useEffect(() => {
         fetchAdminData()
@@ -55,7 +57,7 @@ export default function AdminDashboard() {
             .eq('id', user.id)
             .single()
 
-        if (profile?.role !== 'admin') {
+        if ((profile as any)?.role !== 'admin') {
             router.push('/auth/login?role=admin')
             return
         }
@@ -94,6 +96,22 @@ export default function AdminDashboard() {
         }
     }
 
+    const deleteOrder = async (id: string) => {
+        if (!confirm('System Directive: Are you authorized to permanently purge this transaction?')) return
+        try {
+            const response = await fetch(`/api/orders/${id}`, { method: 'DELETE' })
+            if (response.ok) fetchAdminData()
+            else alert('Access Terminated: Insufficient administrative privileges.')
+        } catch (error) {
+            console.error('Delete error:', error)
+        }
+    }
+
+    const sortedOrders = [...stats.recentOrders].sort((a, b) => {
+        if (sortBy === 'sales') return b.total - a.total
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <Loader2 className="w-12 h-12 animate-spin text-[var(--color-primary)]" />
@@ -125,8 +143,8 @@ export default function AdminDashboard() {
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
                             className={`flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl font-bold transition-all duration-200 ${activeTab === item.id
-                                    ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
-                                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                                ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)]'
+                                : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                                 }`}
                         >
                             <item.icon className="w-5 h-5" />
@@ -210,18 +228,19 @@ export default function AdminDashboard() {
                                     <table className="w-full text-left">
                                         <thead>
                                             <tr className="bg-gray-50/50 border-b border-gray-100">
-                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Order Ref</th>
+                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-900" onClick={() => setSortBy('date')}>Order Ref {sortBy === 'date' && '↓'}</th>
                                                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Business</th>
                                                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Value</th>
+                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right cursor-pointer hover:text-gray-900" onClick={() => setSortBy('sales')}>Value {sortBy === 'sales' && '↓'}</th>
+                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Ops</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
-                                            {stats.recentOrders.length === 0 ? (
-                                                <tr><td colSpan={4} className="p-12 text-center text-gray-400 font-medium italic">Searching platform records...</td></tr>
+                                            {sortedOrders.length === 0 ? (
+                                                <tr><td colSpan={5} className="p-12 text-center text-gray-400 font-medium italic">Searching platform records...</td></tr>
                                             ) : (
-                                                stats.recentOrders.map((order) => (
-                                                    <tr key={order.id} className="hover:bg-gray-50 transition-colors">
+                                                sortedOrders.map((order) => (
+                                                    <tr key={order.id} className="hover:bg-gray-50 transition-colors group/row">
                                                         <td className="px-6 py-4">
                                                             <p className="text-sm font-bold text-gray-900 mb-0.5">#{order.order_number}</p>
                                                             <p className="text-[10px] text-gray-400 font-bold">{formatDate(order.created_at)}</p>
@@ -240,6 +259,14 @@ export default function AdminDashboard() {
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <p className="text-sm font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <button
+                                                                onClick={() => deleteOrder(order.id)}
+                                                                className="p-2 text-gray-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 transition-all"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
                                                         </td>
                                                     </tr>
                                                 ))
