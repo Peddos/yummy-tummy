@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
+import NotificationBell from '@/components/ui/NotificationBell'
 
 interface AdminStats {
     totalRevenue: number
@@ -83,10 +84,10 @@ export default function AdminDashboard() {
                 .select('*')
 
             const currentSettings = { ...settings }
-            settingsData?.forEach(s => {
-                if (s.key === 'delivery_fee') currentSettings.delivery_fee = Number(s.value)
-                if (s.key === 'vendor_commission_percentage') currentSettings.vendor_commission_percentage = Number(s.value)
-            })
+                ; (settingsData as any[])?.forEach(s => {
+                    if (s.key === 'delivery_fee') currentSettings.delivery_fee = Number(s.value)
+                    if (s.key === 'vendor_commission_percentage') currentSettings.vendor_commission_percentage = Number(s.value)
+                })
             setSettings(currentSettings)
 
             const { data: vendors } = await supabase.from('vendors').select('*')
@@ -133,8 +134,8 @@ export default function AdminDashboard() {
         setSavingSettings(true)
         try {
             await Promise.all([
-                supabase.from('system_settings').upsert({ key: 'delivery_fee', value: settings.delivery_fee.toString() }),
-                supabase.from('system_settings').upsert({ key: 'vendor_commission_percentage', value: settings.vendor_commission_percentage.toString() })
+                (supabase.from('system_settings') as any).upsert({ key: 'delivery_fee', value: settings.delivery_fee.toString() }),
+                (supabase.from('system_settings') as any).upsert({ key: 'vendor_commission_percentage', value: settings.vendor_commission_percentage.toString() })
             ])
             alert('Settings updated successfully!')
             fetchAdminData()
@@ -241,10 +242,7 @@ export default function AdminDashboard() {
                             <RefreshCw className="w-5 h-5" />
                         </button>
                         <div className="hidden md:flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-100 transition-colors relative">
-                                <Bell className="w-5 h-5" />
-                                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
-                            </div>
+                            <NotificationBell />
                             <div className="w-10 h-10 bg-[var(--color-primary)] rounded-xl flex items-center justify-center text-white font-bold">
                                 AD
                             </div>

@@ -11,6 +11,7 @@ import {
     Clock, MapPin, Phone, Loader2, Navigation
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import NotificationBell from '@/components/ui/NotificationBell'
 
 export default function RiderDashboard() {
     const router = useRouter()
@@ -174,12 +175,15 @@ export default function RiderDashboard() {
                         <h1 className="text-xl font-bold text-gray-900">Rider Dashboard</h1>
                         <p className="text-sm text-gray-500">Welcome back, {rider?.full_name || 'Rider'}</p>
                     </div>
-                    <button
-                        onClick={handleLogout}
-                        className="text-sm text-gray-600 hover:text-gray-900"
-                    >
-                        Logout
-                    </button>
+                    <div className="flex items-center gap-3">
+                        <NotificationBell />
+                        <button
+                            onClick={handleLogout}
+                            className="text-sm text-gray-600 hover:text-gray-900"
+                        >
+                            Logout
+                        </button>
+                    </div>
                 </div>
             </header>
 

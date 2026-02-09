@@ -12,6 +12,7 @@ import {
     Star, TrendingUp, Loader2, ShoppingBag, Filter, ChevronRight,
     Bell, Map as MapIcon
 } from 'lucide-react'
+import NotificationBell from '@/components/ui/NotificationBell'
 
 export default function CustomerDashboard() {
     const router = useRouter()
@@ -113,9 +114,7 @@ export default function CustomerDashboard() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button className="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-900 transition-colors">
-                                <Bell className="w-5 h-5" />
-                            </button>
+                            <NotificationBell />
                             <button
                                 onClick={handleLogout}
                                 className="w-10 h-10 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors"
