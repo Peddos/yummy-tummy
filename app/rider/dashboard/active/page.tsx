@@ -35,9 +35,14 @@ export default function ActiveDeliveriesPage() {
             `)
             .eq('rider_id', user.id)
             .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
-            .single()
+            .order('created_at', { ascending: false })
+            .limit(1)
 
-        if (!error) setOrder(data)
+        if (!error && data && data.length > 0) {
+            setOrder(data[0])
+        } else {
+            setOrder(null)
+        }
         setLoading(false)
     }
 
@@ -45,7 +50,7 @@ export default function ActiveDeliveriesPage() {
         setUpdating(status)
         const { error } = await supabase
             .from('orders')
-            .update({ status })
+            .update({ status } as any)
             .eq('id', order.id)
 
         if (!error) {

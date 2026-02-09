@@ -11,6 +11,7 @@ export default function AvailableOrdersPage() {
     const [orders, setOrders] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [accepting, setAccepting] = useState<string | null>(null)
+    const [hasActiveOrder, setHasActiveOrder] = useState(false)
 
     useEffect(() => {
         fetchAvailableOrders()
@@ -28,6 +29,19 @@ export default function AvailableOrdersPage() {
     }, [])
 
     const fetchAvailableOrders = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Check if rider already has an active order
+        const { data: activeOrder } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('rider_id', user.id)
+            .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
+            .limit(1)
+
+        setHasActiveOrder(!!activeOrder && activeOrder.length > 0)
+
         const { data, error } = await supabase
             .from('orders')
             .select(`
@@ -54,7 +68,7 @@ export default function AvailableOrdersPage() {
             .update({
                 rider_id: user.id,
                 status: 'assigned_to_rider'
-            })
+            } as any)
             .eq('id', orderId)
 
         if (!error) {
@@ -146,15 +160,15 @@ export default function AvailableOrdersPage() {
 
                             <button
                                 onClick={() => acceptOrder(order.id)}
-                                disabled={!!accepting}
-                                className="btn btn-primary w-full py-5 text-lg flex items-center justify-center gap-3 relative overflow-hidden group/btn"
+                                disabled={!!accepting || hasActiveOrder}
+                                className={`btn btn-primary w-full py-5 text-lg flex items-center justify-center gap-3 relative overflow-hidden group/btn ${hasActiveOrder ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
                             >
                                 {accepting === order.id ? (
                                     <Loader2 className="w-6 h-6 animate-spin" />
                                 ) : (
                                     <>
                                         <Navigation className="w-6 h-6 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
-                                        <span>Accept & Go</span>
+                                        <span>{hasActiveOrder ? 'Active Session in Progress' : 'Accept & Go'}</span>
                                     </>
                                 )}
                             </button>
