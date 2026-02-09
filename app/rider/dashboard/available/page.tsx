@@ -13,6 +13,7 @@ export default function AvailableOrdersPage() {
     const [loading, setLoading] = useState(true)
     const [accepting, setAccepting] = useState<string | null>(null)
     const [hasActiveOrder, setHasActiveOrder] = useState(false)
+    const [activeOrderId, setActiveOrderId] = useState<string | null>(null)
 
     useEffect(() => {
         fetchAvailableOrders()
@@ -39,9 +40,11 @@ export default function AvailableOrdersPage() {
             .select('id')
             .eq('rider_id', user.id)
             .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
-            .limit(1)
+            .limit(1) as { data: any[] | null }
 
-        setHasActiveOrder(!!activeOrder && activeOrder.length > 0)
+        const hasActive = !!activeOrder && activeOrder.length > 0
+        setHasActiveOrder(hasActive)
+        setActiveOrderId(hasActive ? activeOrder[0].id : null)
 
         const { data, error } = await supabase
             .from('orders')
@@ -164,16 +167,25 @@ export default function AvailableOrdersPage() {
                             </div>
 
                             <button
-                                onClick={() => acceptOrder(order.id)}
-                                disabled={!!accepting || hasActiveOrder}
-                                className={`btn btn-primary w-full py-5 text-lg flex items-center justify-center gap-3 relative overflow-hidden group/btn ${hasActiveOrder ? 'opacity-50 grayscale cursor-not-allowed' : ''}`}
+                                onClick={() => hasActiveOrder ? router.push('/rider/dashboard/active') : acceptOrder(order.id)}
+                                disabled={!!accepting}
+                                className={`btn btn-primary w-full py-5 text-lg flex items-center justify-center gap-3 relative overflow-hidden group/btn ${hasActiveOrder ? 'bg-gray-400 border-gray-400' : ''}`}
                             >
                                 {accepting === order.id ? (
                                     <Loader2 className="w-6 h-6 animate-spin" />
                                 ) : (
                                     <>
-                                        <Navigation className="w-6 h-6 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
-                                        <span>{hasActiveOrder ? 'Active Session in Progress' : 'Accept & Go'}</span>
+                                        {hasActiveOrder ? (
+                                            <>
+                                                <ChevronRight className="w-6 h-6" />
+                                                <span>View Active Session</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Navigation className="w-6 h-6 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
+                                                <span>Accept & Go</span>
+                                            </>
+                                        )}
                                     </>
                                 )}
                             </button>
