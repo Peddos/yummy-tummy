@@ -27,9 +27,9 @@ export default function CheckoutPage() {
     const [orderId, setOrderId] = useState<string | null>(null)
     const [isSimulated, setIsSimulated] = useState(false)
 
-    const [deliveryFee, setDeliveryFee] = useState(1)
+    const [deliveryFee, setDeliveryFee] = useState(0) // Default to 0 initially, will optionally fetch actual cost for internal use
     const subtotal = getTotal()
-    const total = subtotal + deliveryFee
+    const total = subtotal // Inclusive pricing: Customer pays menu price only
 
     useEffect(() => {
         if (items.length === 0 && step !== 2) {
@@ -45,13 +45,17 @@ export default function CheckoutPage() {
                 .from('system_settings')
                 .select('value')
                 .eq('key', 'delivery_fee')
-                .single()
+                .single() as { data: any }
 
             if (data) {
                 setDeliveryFee(Number(data.value))
+            } else {
+                // Fallback if not set in DB
+                setDeliveryFee(50)
             }
         } catch (error) {
             console.error('Error fetching delivery fee:', error)
+            setDeliveryFee(50)
         }
     }
 
@@ -313,7 +317,7 @@ export default function CheckoutPage() {
                                     </div>
                                     <div className="flex justify-between text-xs font-bold text-gray-400">
                                         <span>LOGISTICS FEE</span>
-                                        <span>{formatCurrency(deliveryFee)}</span>
+                                        <span className="text-green-600">Included</span>
                                     </div>
                                     <div className="flex justify-between items-end pt-4">
                                         <div>
