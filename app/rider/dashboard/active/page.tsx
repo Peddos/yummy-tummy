@@ -25,13 +25,31 @@ export default function ActiveDeliveriesPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
+        console.log('Rider Fetching Active Order for UID:', user.id)
+
+        // Stage 1: Simple fetch to confirm basic access
+        const { data: basicOrder, error: basicError } = await supabase
+            .from('orders')
+            .select('id, order_number, status')
+            .eq('rider_id', user.id)
+            .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+
+        if (basicError) {
+            console.error('Basic Access Error (Check RLS):', basicError)
+        }
+
+        console.log('Basic Order Check:', basicOrder)
+
+        // Stage 2: Full fetch with joins
         const { data, error } = await supabase
             .from('orders')
             .select(`
                 *,
-                vendor:vendor_id (business_name, address, phone),
-                customer:customer_id (full_name, phone),
-                items:order_items (quantity, menu_item:menu_item_id (name))
+                vendor:vendor_id (id, business_name, address, phone),
+                customer:customer_id (id, full_name, phone),
+                items:order_items (id, quantity, menu_item:menu_item_id (name))
             `)
             .eq('rider_id', user.id)
             .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
@@ -39,8 +57,22 @@ export default function ActiveDeliveriesPage() {
             .limit(1)
 
         if (error) {
-            console.error('Error fetching active order:', error)
-            setOrder(null)
+            console.error('Complex Join Error (Check Joins/RLS):', error)
+            // Fallback to basic data if joins failed but basic worked
+            if (basicOrder && (basicOrder as any[]).length > 0) {
+                console.warn('Falling back to basic order data due to join failure')
+                const b = (basicOrder as any[])[0]
+                setOrder({
+                    id: b.id,
+                    order_number: b.order_number,
+                    status: b.status,
+                    vendor: { business_name: 'Vendor Info Pending', address: 'Loading...', phone: '' },
+                    customer: { full_name: 'Customer Info Pending', phone: '' },
+                    items: []
+                })
+            } else {
+                setOrder(null)
+            }
         } else if (data && data.length > 0) {
             setOrder(data[0])
         } else {
