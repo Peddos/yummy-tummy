@@ -14,6 +14,7 @@ export default function AvailableOrdersPage() {
     const [accepting, setAccepting] = useState<string | null>(null)
     const [hasActiveOrder, setHasActiveOrder] = useState(false)
     const [activeOrderId, setActiveOrderId] = useState<string | null>(null)
+    const [activeOrder, setActiveOrder] = useState<any>(null)
 
     useEffect(() => {
         fetchAvailableOrders()
@@ -35,16 +36,17 @@ export default function AvailableOrdersPage() {
         if (!user) return
 
         // Check if rider already has an active order
-        const { data: activeOrder } = await supabase
+        const { data: activeOrders } = await supabase
             .from('orders')
-            .select('id')
+            .select('id, order_number')
             .eq('rider_id', user.id)
             .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
             .limit(1) as { data: any[] | null }
 
-        const hasActive = !!activeOrder && activeOrder.length > 0
+        const hasActive = !!activeOrders && activeOrders.length > 0
         setHasActiveOrder(hasActive)
-        setActiveOrderId(hasActive ? activeOrder[0].id : null)
+        setActiveOrder(hasActive ? activeOrders[0] : null)
+        setActiveOrderId(hasActive ? activeOrders[0].id : null)
 
         const { data, error } = await supabase
             .from('orders')
@@ -178,7 +180,7 @@ export default function AvailableOrdersPage() {
                                         {hasActiveOrder ? (
                                             <>
                                                 <ChevronRight className="w-6 h-6" />
-                                                <span>View Active Session</span>
+                                                <span>Session: {activeOrder?.order_number || 'Running'}</span>
                                             </>
                                         ) : (
                                             <>
