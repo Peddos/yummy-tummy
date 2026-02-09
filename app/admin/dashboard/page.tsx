@@ -107,6 +107,12 @@ export default function AdminDashboard() {
         }
     }
 
+    const handleLogout = async () => {
+        if (!confirm('Proceed with secure logout from Administrative Center?')) return
+        await supabase.auth.signOut()
+        router.push('/')
+    }
+
     const sortedOrders = [...stats.recentOrders].sort((a, b) => {
         if (sortBy === 'sales') return b.total - a.total
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -153,22 +159,21 @@ export default function AdminDashboard() {
                     ))}
                 </nav>
 
-                <div className="p-4 mt-auto">
-                    <div className="bg-gray-50 p-4 rounded-3xl border border-gray-200 mb-4">
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Platform Status</p>
-                        <div className="flex items-center gap-2 text-green-600 font-bold text-xs">
+                <div className="px-4 pb-8 space-y-2">
+                    <div className="bg-gray-50 p-5 rounded-3xl border border-gray-100 mb-2">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Platform Status</p>
+                        <div className="flex items-center gap-2 text-green-600 font-bold text-xs uppercase tracking-tight">
                             <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                            All services online
+                            System Online
                         </div>
                     </div>
+
                     <button
-                        onClick={async () => {
-                            await supabase.auth.signOut()
-                            router.push('/')
-                        }}
-                        className="flex items-center gap-2 w-full px-4 py-3 rounded-2xl font-bold text-red-500 hover:bg-red-50 transition-colors"
+                        onClick={handleLogout}
+                        className="flex items-center gap-3 w-full px-4 py-4 rounded-2xl font-bold text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all group"
                     >
-                        <LogOut className="w-5 h-5" /> Logout
+                        <LogOut className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+                        <span>Sign Out</span>
                     </button>
                 </div>
             </aside>
@@ -499,6 +504,6 @@ export default function AdminDashboard() {
                     )}
                 </div>
             </main>
-        </div>
+        </div >
     )
 }

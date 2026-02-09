@@ -47,6 +47,14 @@ export default function ActiveDeliveriesPage() {
     }
 
     const updateStatus = async (status: string) => {
+        if (status === 'delivered') {
+            if (!window.confirm('Confirm Delivery: Have you successfully handed the order to the customer?')) return
+        } else if (status === 'picked_up') {
+            if (!window.confirm('Confirm Pickup: Have you received all items from the vendor?')) return
+        } else if (status === 'in_transit') {
+            if (!window.confirm('Ready to start the trip? This will notify the customer.')) return
+        }
+
         setUpdating(status)
         const { error } = await supabase
             .from('orders')
@@ -234,6 +242,10 @@ export default function ActiveDeliveriesPage() {
                                 </div>
                             ))}
                             <div className="mt-4 pt-4 border-t border-dashed border-gray-200 flex justify-between items-center px-2">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Rider Reward</span>
+                                <span className="text-sm font-bold text-[var(--color-primary)]">{formatCurrency(order.delivery_fee)}</span>
+                            </div>
+                            <div className="mt-2 flex justify-between items-center px-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Value</span>
                                 <span className="text-lg font-bold text-gray-900">{formatCurrency(order.total)}</span>
                             </div>
