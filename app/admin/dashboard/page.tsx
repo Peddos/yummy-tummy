@@ -237,7 +237,14 @@ export default function AdminDashboard() {
                         <p className="text-xs text-gray-500 font-medium tracking-wide">Aggregate metrics and system control</p>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4 md:gap-6">
+                        <button
+                            onClick={handleLogout}
+                            className="lg:hidden p-2 text-gray-400 hover:text-red-500 transition-colors"
+                            aria-label="Logout"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </button>
                         <button onClick={() => fetchAdminData()} className="p-2 text-gray-400 hover:text-[var(--color-primary)] transition-colors">
                             <RefreshCw className="w-5 h-5" />
                         </button>
