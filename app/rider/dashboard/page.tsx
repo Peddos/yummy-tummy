@@ -23,6 +23,7 @@ export default function RiderDashboard() {
         completedToday: 0
     })
     const [activeOrder, setActiveOrder] = useState<any>(null)
+    const [availableOrders, setAvailableOrders] = useState<any[]>([])
 
     useEffect(() => {
         fetchDashboardData()
@@ -54,6 +55,19 @@ export default function RiderDashboard() {
 
         if (riderData) setRider(riderData)
 
+        // Fetch available orders teaser
+        const { data: availableData } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                vendor:vendor_id (business_name)
+            `)
+            .eq('status', 'ready_for_pickup')
+            .is('rider_id', null)
+            .limit(3)
+
+        setAvailableOrders(availableData || [])
+
         // Fetch active order
         const { data: activeOrders } = await supabase
             .from('orders')
@@ -79,7 +93,7 @@ export default function RiderDashboard() {
             .from('orders')
             .select('*')
             .eq('rider_id', user.id)
-            .gte('created_at', today.toISOString())
+            .gte('created_at', today.toISOString()) as { data: any[] | null }
 
         const todayCompleted = todayOrders?.filter(o => o.status === 'delivered') || []
         const todayEarnings = todayCompleted.reduce((sum, o) => sum + (o.delivery_fee || 0), 0)
@@ -93,7 +107,7 @@ export default function RiderDashboard() {
             .select('delivery_fee')
             .eq('rider_id', user.id)
             .eq('status', 'delivered')
-            .gte('created_at', weekAgo.toISOString())
+            .gte('created_at', weekAgo.toISOString()) as { data: any[] | null }
 
         const weekEarnings = weekOrders?.reduce((sum, o) => sum + (Number(o.delivery_fee) || 0), 0) || 0
 
@@ -229,20 +243,61 @@ export default function RiderDashboard() {
                         </div>
                     </div>
                 ) : (
-                    <div className="mb-6">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4">Active Delivery</h2>
-                        <div className="card p-12 text-center">
-                            <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Deliveries</h3>
-                            <p className="text-gray-500 mb-4">Check available orders to start earning</p>
-                            <button
-                                onClick={() => router.push('/rider/dashboard/available')}
-                                className="btn btn-primary"
-                            >
-                                View Available Orders
-                            </button>
+                    <>
+                        {/* Available Orders Teaser */}
+                        {!activeOrder && availableOrders.length > 0 && (
+                            <div className="mb-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h2 className="text-lg font-bold text-gray-900">Available Near You</h2>
+                                    <button
+                                        onClick={() => router.push('/rider/dashboard/available')}
+                                        className="text-sm font-bold text-[var(--color-primary)] hover:underline"
+                                    >
+                                        View All ({availableOrders.length})
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {availableOrders.map((order) => (
+                                        <div key={order.id} className="card p-4 flex items-center justify-between border-l-4 border-l-[var(--color-primary)]">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-10 h-10 bg-[var(--color-primary-light)] rounded-lg flex items-center justify-center">
+                                                    <Package className="w-5 h-5 text-[var(--color-primary)]" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-gray-900 truncate">{order.vendor?.business_name}</p>
+                                                    <p className="text-xs text-gray-500">{order.delivery_address}</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="font-bold text-gray-900">{formatCurrency(order.delivery_fee || 1)}</p>
+                                                <button
+                                                    onClick={() => router.push('/rider/dashboard/available')}
+                                                    className="text-[10px] font-black text-[var(--color-primary)] uppercase tracking-widest"
+                                                >
+                                                    Accept Job
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mb-6">
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">Active Delivery</h2>
+                            <div className="card p-12 text-center">
+                                <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Deliveries</h3>
+                                <p className="text-gray-500 mb-4">Check available orders to start earning</p>
+                                <button
+                                    onClick={() => router.push('/rider/dashboard/available')}
+                                    className="btn btn-primary"
+                                >
+                                    View Available Orders
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {/* Performance Stats */}

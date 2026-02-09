@@ -9,6 +9,7 @@ import { MapPin, Navigation, Package, Star, Clock, CheckCircle2, Loader2, Refres
 export default function AvailableOrdersPage() {
     const router = useRouter()
     const [orders, setOrders] = useState<any[]>([])
+    const [availableCount, setAvailableCount] = useState(0)
     const [loading, setLoading] = useState(true)
     const [accepting, setAccepting] = useState<string | null>(null)
     const [hasActiveOrder, setHasActiveOrder] = useState(false)
@@ -65,18 +66,20 @@ export default function AvailableOrdersPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const { error } = await supabase
+        // Update with count check
+        const { error, count } = await supabase
             .from('orders')
             .update({
                 rider_id: user.id,
                 status: 'assigned_to_rider'
-            } as any)
+            } as any, { count: 'exact' })
             .eq('id', orderId)
+            .is('rider_id', null) // Double check it hasn't been taken
 
-        if (!error) {
+        if (!error && count && count > 0) {
             router.push('/rider/dashboard/active')
         } else {
-            alert('Failed to accept order. It might have been taken by another rider.')
+            alert('Failed to accept order. It might have been taken by another rider or there was a permission error.')
             fetchAvailableOrders()
         }
         setAccepting(null)
