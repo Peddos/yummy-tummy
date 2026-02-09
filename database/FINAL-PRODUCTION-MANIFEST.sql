@@ -65,12 +65,12 @@ CREATE POLICY "Orders: vendor_access" ON orders FOR ALL
   USING (vendor_id = auth.uid()) 
   WITH CHECK (vendor_id = auth.uid());
 CREATE POLICY "Orders: rider_read_ready" ON orders FOR SELECT 
-  USING (status = 'ready_for_pickup' AND rider_id IS NULL);
+  USING (status = 'ready_for_pickup' AND (rider_id IS NULL OR rider_id = auth.uid()));
 CREATE POLICY "Orders: rider_manage_own" ON orders FOR ALL 
-  USING (rider_id = auth.uid()) 
-  WITH CHECK (rider_id = auth.uid());
+  USING (rider_id = auth.uid());
 CREATE POLICY "Orders: rider_accept" ON orders FOR UPDATE 
-  USING (status = 'ready_for_pickup' AND rider_id IS NULL);
+  USING (status = 'ready_for_pickup' AND rider_id IS NULL)
+  WITH CHECK (rider_id = auth.uid() AND status = 'assigned_to_rider');
 
 -- 7. ORDER ITEMS (The Details)
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;

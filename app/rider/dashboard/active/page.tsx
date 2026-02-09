@@ -25,6 +25,21 @@ export default function ActiveDeliveriesPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
+        // SELF-HEALING: Verify rider record exists
+        const { data: riderExists } = await supabase
+            .from('riders')
+            .select('id')
+            .eq('id', user.id)
+            .single()
+
+        if (!riderExists) {
+            const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single() as { data: any }
+            if (profile?.role === 'rider') {
+                console.log('Self-healing active page: Creating missing rider record')
+                await supabase.from('riders').insert({ id: user.id, vehicle_type: 'Motorcycle' } as any)
+            }
+        }
+
         console.log('Rider Fetching Active Order for UID:', user.id)
 
         // Stage 1: Simple fetch to confirm basic access

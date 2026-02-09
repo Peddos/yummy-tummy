@@ -47,11 +47,39 @@ export default function RiderDashboard() {
             return
         }
 
-        const { data: riderData } = await supabase
+        let { data: riderData, error: riderError } = await supabase
             .from('riders')
             .select('*')
             .eq('id', user.id)
             .single()
+
+        // SELF-HEALING: If rider record is missing but user has rider profile, create it
+        if (!riderData && !riderError) {
+            console.log('Self-healing: Creating missing rider record for:', user.id)
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', user.id)
+                .single() as { data: any }
+
+            if (profile?.role === 'rider') {
+                const { data: newRider, error: createError } = await supabase
+                    .from('riders')
+                    .insert({
+                        id: user.id,
+                        vehicle_type: 'Motorcycle', // Default starting value
+                        is_available: true
+                    } as any)
+                    .select()
+                    .single()
+
+                if (!createError) {
+                    riderData = newRider
+                } else {
+                    console.error('Failed to self-heal rider record:', createError)
+                }
+            }
+        }
 
         if (riderData) setRider(riderData)
 
