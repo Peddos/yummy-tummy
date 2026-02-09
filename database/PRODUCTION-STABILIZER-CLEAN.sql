@@ -51,15 +51,23 @@ CREATE POLICY "Orders: rider_read_ready" ON orders FOR SELECT USING (status = 'r
 CREATE POLICY "Orders: rider_manage_own" ON orders FOR ALL USING (rider_id = auth.uid());
 CREATE POLICY "Orders: rider_accept" ON orders FOR UPDATE USING (status = 'ready_for_pickup' AND rider_id IS NULL);
 
--- 7. Logic Correction for Profiles Accessibility (Crucial for joins)
+-- 7. Order Items: Visibility for stakeholders
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Items: read_access" ON order_items FOR SELECT USING (true); -- Safe because it only shows contents, price etc.
+CREATE POLICY "Items: insert_access" ON order_items FOR INSERT WITH CHECK (true);
+
+-- 8. Categories: Public read
+ALTER TABLE menu_categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Categories: read" ON menu_categories FOR SELECT USING (true);
+CREATE POLICY "Categories: admin" ON menu_categories FOR ALL USING (check_is_admin());
+
+-- 9. Logic Correction for Profiles Accessibility (Crucial for joins)
 -- Allow anyone involved in an order to see the profiles of others involved
 CREATE POLICY "Profiles: order_visibility" ON profiles FOR SELECT 
 USING (
-  EXISTS (
-    SELECT 1 FROM orders 
-    WHERE (customer_id = profiles.id OR vendor_id = profiles.id OR rider_id = profiles.id)
-    AND (customer_id = auth.uid() OR vendor_id = auth.uid() OR rider_id = auth.uid())
-  )
+  role IN ('vendor', 'rider') OR 
+  auth.uid() = id OR 
+  check_is_admin()
 );
 
 -- 8. Cleanup Helpers (For testing/recovery)
