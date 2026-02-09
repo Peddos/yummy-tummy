@@ -68,8 +68,7 @@ export default function RiderDashboard() {
 
         setAvailableOrders(availableData || [])
 
-        // Fetch active order
-        const { data: activeOrders } = await supabase
+        const { data: activeOrders, error: activeError } = await (supabase as any)
             .from('orders')
             .select(`
                 *,
@@ -81,8 +80,12 @@ export default function RiderDashboard() {
             .order('created_at', { ascending: false })
             .limit(1)
 
+        if (activeError) console.error('Error fetching dashboard active order:', activeError)
+
         if (activeOrders && activeOrders.length > 0) {
             setActiveOrder(activeOrders[0])
+        } else {
+            setActiveOrder(null)
         }
 
         // Calculate stats

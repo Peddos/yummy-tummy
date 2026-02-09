@@ -38,7 +38,10 @@ export default function ActiveDeliveriesPage() {
             .order('created_at', { ascending: false })
             .limit(1)
 
-        if (!error && data && data.length > 0) {
+        if (error) {
+            console.error('Error fetching active order:', error)
+            setOrder(null)
+        } else if (data && data.length > 0) {
             setOrder(data[0])
         } else {
             setOrder(null)
