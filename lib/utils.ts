@@ -79,7 +79,7 @@ export function getOrderStatusColor(status: string): string {
 
 // Calculate delivery fee (simple flat rate for now)
 export function calculateDeliveryFee(): number {
-    return parseInt(process.env.DELIVERY_FEE || '100')
+    return parseInt(process.env.DELIVERY_FEE || '1')
 }
 
 // Validate phone number (Kenyan format)

@@ -131,7 +131,7 @@ export default function AvailableOrdersPage() {
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-2xl font-bold text-[var(--color-primary)]">{formatCurrency(order.delivery_fee || 150)}</p>
+                                    <p className="text-2xl font-bold text-[var(--color-primary)]">{formatCurrency(order.delivery_fee || 1)}</p>
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Est. Reward</p>
                                 </div>
                             </div>

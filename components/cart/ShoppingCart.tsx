@@ -4,16 +4,34 @@ import { useCart } from '@/lib/store/cart'
 import { formatCurrency } from '@/lib/utils'
 import { X, Plus, Minus, ShoppingCart as CartIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function ShoppingCart() {
     const router = useRouter()
     const [isOpen, setIsOpen] = useState(false)
     const { items, removeItem, updateQuantity, getTotal, getItemCount, clearCart } = useCart()
+    const [deliveryFee, setDeliveryFee] = useState(1)
 
     const itemCount = getItemCount()
     const total = getTotal()
-    const deliveryFee = parseFloat(process.env.NEXT_PUBLIC_DELIVERY_FEE || '1')
+
+    useEffect(() => {
+        fetchSettings()
+    }, [])
+
+    const fetchSettings = async () => {
+        try {
+            const { supabase } = await import('@/lib/supabase/client')
+            const { data } = await (supabase as any)
+                .from('system_settings')
+                .select('value')
+                .eq('key', 'delivery_fee')
+                .single()
+            if (data?.value) setDeliveryFee(Number(data.value))
+        } catch (error) {
+            console.error('Error fetching delivery fee:', error)
+        }
+    }
 
     if (itemCount === 0) return null
 

@@ -243,7 +243,7 @@ export default function ActiveDeliveriesPage() {
                             ))}
                             <div className="mt-4 pt-4 border-t border-dashed border-gray-200 flex justify-between items-center px-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Rider Reward</span>
-                                <span className="text-sm font-bold text-[var(--color-primary)]">{formatCurrency(order.delivery_fee)}</span>
+                                <span className="text-sm font-bold text-[var(--color-primary)]">{formatCurrency(order.delivery_fee || 0)}</span>
                             </div>
                             <div className="mt-2 flex justify-between items-center px-2">
                                 <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Value</span>
