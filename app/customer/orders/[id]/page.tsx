@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import StatusBadge from '@/components/ui/StatusBadge'
@@ -12,22 +12,24 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 
-export default function OrderTrackingPage({ params }: { params: { id: string } }) {
+export default function OrderTrackingPage() {
+    const { id } = useParams()
     const router = useRouter()
     const [order, setOrder] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
+        if (!id) return
         fetchOrder()
 
         const channel = supabase
-            .channel(`order-${params.id}`)
+            .channel(`order-${id}`)
             .on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'orders',
-                filter: `id=eq.${params.id}`
+                filter: `id=eq.${id}`
             }, (payload) => {
                 setOrder((prev: any) => ({ ...(prev || {}), ...payload.new }))
             })
@@ -36,26 +38,27 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [params.id])
+    }, [id])
 
     const fetchOrder = async () => {
+        if (!id) return
         try {
             setLoading(true)
             setError(null)
 
+            console.log('Fetching order with ID:', id)
+
             // Stage 1: Fetch base order (Minimal Joins)
-            // We fetch the basics first to ensure the customer sees their status no matter what
             const { data: baseOrder, error: baseErr } = await supabase
                 .from('orders')
                 .select('*')
-                .eq('id', params.id)
+                .eq('id', id)
                 .single()
 
             if (baseErr) throw baseErr
             setOrder(baseOrder)
 
             // Stage 2: Fetch Joins (Resilient)
-            // We run this separately so if a rider profile RLS fails, the page still works
             const { data: fullData, error: joinErr } = await supabase
                 .from('orders')
                 .select(`
@@ -63,18 +66,18 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
                     rider:rider_id (*, profile:id (full_name, phone)),
                     items:order_items (*, menu_item:menu_item_id (name))
                 `)
-                .eq('id', params.id)
+                .eq('id', id)
                 .single()
 
             if (!joinErr && fullData) {
                 setOrder((prev: any) => ({ ...(prev || {}), ...fullData }))
             } else if (joinErr) {
-                console.warn('Metadata enrichment failed (Likely RLS cache delay):', joinErr)
+                console.warn('Metadata enrichment failed:', joinErr)
             }
 
         } catch (err: any) {
             console.error('Core fetch error:', err)
-            setError(err.message)
+            setError(err.message || 'Unknown synchronization error')
         } finally {
             setLoading(false)
         }
@@ -93,7 +96,12 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
             <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4 text-center">
                 <AlertCircle className="w-16 h-16 text-red-100 mb-6" />
                 <h2 className="text-2xl font-black text-gray-900 mb-2">Order Synchronization Failed</h2>
-                <p className="text-gray-500 mb-8 max-w-sm">We couldn't retrieve the details for this order session.</p>
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 mb-8 max-w-sm">
+                    <p className="text-[10px] font-black text-red-700 uppercase tracking-widest mb-1">Error Diagnostic</p>
+                    <p className="text-red-500 text-sm font-bold leading-tight">
+                        {error || "Order session ID mismatch. We couldn't find this order record."}
+                    </p>
+                </div>
                 <button onClick={() => router.back()} className="btn btn-primary px-8">Return Home</button>
             </div>
         )
