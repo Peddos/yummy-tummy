@@ -27,16 +27,33 @@ export default function CheckoutPage() {
     const [orderId, setOrderId] = useState<string | null>(null)
     const [isSimulated, setIsSimulated] = useState(false)
 
+    const [deliveryFee, setDeliveryFee] = useState(1)
     const subtotal = getTotal()
-    const deliveryFee = parseFloat(process.env.NEXT_PUBLIC_DELIVERY_FEE || '1')
     const total = subtotal + deliveryFee
 
     useEffect(() => {
         if (items.length === 0 && step !== 2) {
             router.push('/customer')
         }
+        fetchSettings()
         checkUserMeta()
     }, [items.length])
+
+    const fetchSettings = async () => {
+        try {
+            const { data } = await supabase
+                .from('system_settings')
+                .select('value')
+                .eq('key', 'delivery_fee')
+                .single()
+
+            if (data) {
+                setDeliveryFee(Number(data.value))
+            }
+        } catch (error) {
+            console.error('Error fetching delivery fee:', error)
+        }
+    }
 
     const checkUserMeta = async () => {
         const { data: { user } } = await supabase.auth.getUser()

@@ -84,9 +84,22 @@ export default function RiderDashboard() {
         const todayCompleted = todayOrders?.filter(o => o.status === 'delivered') || []
         const todayEarnings = todayCompleted.reduce((sum, o) => sum + (o.delivery_fee || 0), 0)
 
+        const weekAgo = new Date()
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        weekAgo.setHours(0, 0, 0, 0)
+
+        const { data: weekOrders } = await supabase
+            .from('orders')
+            .select('delivery_fee')
+            .eq('rider_id', user.id)
+            .eq('status', 'delivered')
+            .gte('created_at', weekAgo.toISOString())
+
+        const weekEarnings = weekOrders?.reduce((sum, o) => sum + (Number(o.delivery_fee) || 0), 0) || 0
+
         setStats({
             todayEarnings,
-            weekEarnings: todayEarnings * 5, // Mock data
+            weekEarnings,
             activeDeliveries: activeOrders?.length || 0,
             completedToday: todayCompleted.length
         })

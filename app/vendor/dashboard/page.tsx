@@ -18,6 +18,8 @@ export default function VendorDashboard() {
     const [stats, setStats] = useState({
         pendingOrders: 0,
         totalEarnings: 0,
+        netEarnings: 0,
+        commissionRate: 0,
         activeMenu: 0,
         recentOrders: [] as any[]
     })
@@ -70,12 +72,24 @@ export default function VendorDashboard() {
             .eq('vendor_id', user.id)
             .eq('is_available', true)
 
+        const { data: settingsData } = await supabase
+            .from('system_settings')
+            .select('value')
+            .eq('key', 'vendor_commission_percentage')
+            .single()
+
+        const commissionRate = (settingsData as any)?.value ? Number((settingsData as any).value) / 100 : 0.1
+
         const earnings = (orders as any[])?.filter((o: any) => o.status === 'delivered' || o.status === 'completed')
             .reduce((sum: number, o: any) => sum + Number(o.subtotal || 0), 0) || 0
+
+        const netEarnings = earnings * (1 - commissionRate)
 
         setStats({
             pendingOrders: (orders as any[])?.filter((o: any) => !['delivered', 'completed', 'cancelled', 'pending_payment'].includes(o.status)).length || 0,
             totalEarnings: earnings,
+            netEarnings,
+            commissionRate: commissionRate * 100,
             activeMenu: menuCount || 0,
             recentOrders: orders?.slice(0, 5) || []
         })
@@ -186,10 +200,10 @@ export default function VendorDashboard() {
                         />
                         <MetricCard
                             icon={Wallet}
-                            label="Total Revenue"
-                            value={formatCurrency(stats.totalEarnings)}
+                            label="Net Revenue"
+                            value={formatCurrency(stats.netEarnings)}
                             iconColor="text-green-600"
-                            trend={{ value: 12, isPositive: true }}
+                            trend={{ value: Math.round(stats.commissionRate), isPositive: false }} // Using trend as a placeholder to show commission %
                         />
                         <MetricCard
                             icon={Utensils}
