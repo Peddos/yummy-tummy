@@ -29,7 +29,7 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
                 table: 'orders',
                 filter: `id=eq.${params.id}`
             }, (payload) => {
-                setOrder(prev => ({ ...prev, ...payload.new }))
+                setOrder((prev: any) => ({ ...(prev || {}), ...payload.new }))
             })
             .subscribe()
 
@@ -41,10 +41,24 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
     const fetchOrder = async () => {
         try {
             setLoading(true)
-            const { data, error } = await supabase
+            setError(null)
+
+            // Stage 1: Fetch base order (Minimal Joins)
+            // We fetch the basics first to ensure the customer sees their status no matter what
+            const { data: baseOrder, error: baseErr } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('id', params.id)
+                .single()
+
+            if (baseErr) throw baseErr
+            setOrder(baseOrder)
+
+            // Stage 2: Fetch Joins (Resilient)
+            // We run this separately so if a rider profile RLS fails, the page still works
+            const { data: fullData, error: joinErr } = await supabase
                 .from('orders')
                 .select(`
-                    *,
                     vendor:vendor_id (*),
                     rider:rider_id (*, profile:id (full_name, phone)),
                     items:order_items (*, menu_item:menu_item_id (name))
@@ -52,10 +66,14 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
                 .eq('id', params.id)
                 .single()
 
-            if (error) throw error
-            setOrder(data)
+            if (!joinErr && fullData) {
+                setOrder((prev: any) => ({ ...(prev || {}), ...fullData }))
+            } else if (joinErr) {
+                console.warn('Metadata enrichment failed (Likely RLS cache delay):', joinErr)
+            }
+
         } catch (err: any) {
-            console.error('Fetch order error:', err)
+            console.error('Core fetch error:', err)
             setError(err.message)
         } finally {
             setLoading(false)
@@ -147,8 +165,8 @@ export default function OrderTrackingPage({ params }: { params: { id: string } }
                                     )}
 
                                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 relative z-10 ${status === 'completed' ? 'bg-green-100 text-green-600' :
-                                            status === 'active' ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] ring-4 ring-[var(--color-primary-light)]/50' :
-                                                'bg-gray-50 text-gray-300'
+                                        status === 'active' ? 'bg-[var(--color-primary-light)] text-[var(--color-primary)] ring-4 ring-[var(--color-primary-light)]/50' :
+                                            'bg-gray-50 text-gray-300'
                                         }`}>
                                         <Icon className={`w-6 h-6 ${status === 'active' ? 'animate-pulse' : ''}`} />
                                     </div>
