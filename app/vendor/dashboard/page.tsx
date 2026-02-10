@@ -92,7 +92,7 @@ export default function VendorDashboard() {
             netEarnings,
             commissionRate: commissionRate * 100,
             activeMenu: menuCount || 0,
-            recentOrders: orders?.slice(0, 5) || []
+            recentOrders: orders?.filter((o: any) => o.status !== 'pending_payment').slice(0, 5) || []
         })
 
         setLoading(false)

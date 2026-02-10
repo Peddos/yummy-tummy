@@ -144,11 +144,8 @@ export default function CheckoutPage() {
                 filter: `id=eq.${orderId}`
             }, (payload) => {
                 const newStatus = (payload.new as any).status
-                console.log('Order status updated:', newStatus)
-
                 // Redirect when payment is confirmed
                 if (newStatus === 'paid') {
-                    console.log('Payment confirmed! Redirecting to order tracking...')
                     setTimeout(() => {
                         router.push(`/customer/orders/${orderId}`)
                     }, 1500) // Small delay for better UX

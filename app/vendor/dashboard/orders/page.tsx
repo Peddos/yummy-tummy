@@ -82,7 +82,7 @@ export default function VendorOrdersPage() {
         </div>
     )
 
-    const activeOrders = orders.filter(o => !['delivered', 'completed', 'cancelled'].includes(o.status))
+    const activeOrders = orders.filter(o => !['delivered', 'completed', 'cancelled', 'pending_payment'].includes(o.status))
     const pastOrders = orders.filter(o => ['delivered', 'completed', 'cancelled'].includes(o.status))
 
     return (
@@ -117,8 +117,8 @@ export default function VendorOrdersPage() {
                         {activeOrders.length === 0 ? (
                             <div className="card p-16 text-center border-dashed border-2 border-gray-200">
                                 <Package className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                                <h3 className="text-lg font-bold text-gray-900 mb-1">No pending orders</h3>
-                                <p className="text-gray-500 text-sm">New orders will appear here automatically</p>
+                                <h3 className="text-lg font-bold text-gray-900 mb-1">No active orders</h3>
+                                <p className="text-gray-500 text-sm">New paid orders will appear here automatically</p>
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -129,7 +129,7 @@ export default function VendorOrdersPage() {
                                                 <div className="flex items-center gap-3 mb-2">
                                                     <span className="text-xs font-black text-[var(--color-primary)]">#{order.order_number}</span>
                                                     <StatusBadge status={order.status} />
-                                                    {['cancelled', 'pending_payment'].includes(order.status) && (
+                                                    {['cancelled'].includes(order.status) && (
                                                         <button
                                                             onClick={() => deleteOrder(order.id)}
                                                             className="p-1 text-gray-300 hover:text-red-500 transition-colors"
@@ -151,49 +151,37 @@ export default function VendorOrdersPage() {
                                             </div>
 
                                             <div className="flex flex-col items-end gap-2">
-                                                {order.status === 'pending_payment' ? (
-                                                    <div className="flex flex-col items-end gap-2">
-                                                        <span className="text-[10px] font-black text-amber-600 uppercase tracking-widest">Waiting for customer...</span>
+                                                <div className="flex gap-2">
+                                                    {order.status === 'paid' && (
                                                         <button
-                                                            onClick={() => updateStatus(order.id, 'paid')}
-                                                            className="text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-light)] px-3 py-1.5 rounded-lg uppercase"
+                                                            onClick={() => updateStatus(order.id, 'confirmed')}
+                                                            className="btn btn-primary px-6 py-2.5 text-xs flex items-center gap-2"
                                                         >
-                                                            Force Verify (Dev)
+                                                            <CheckCircle2 className="w-4 h-4" /> Accept Order
                                                         </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex gap-2">
-                                                        {order.status === 'paid' && (
-                                                            <button
-                                                                onClick={() => updateStatus(order.id, 'confirmed')}
-                                                                className="btn btn-primary px-6 py-2.5 text-xs flex items-center gap-2"
-                                                            >
-                                                                <CheckCircle2 className="w-4 h-4" /> Accept Order
-                                                            </button>
-                                                        )}
-                                                        {order.status === 'confirmed' && (
-                                                            <button
-                                                                onClick={() => updateStatus(order.id, 'preparing')}
-                                                                className="btn btn-primary bg-orange-500 hover:bg-orange-600 border-orange-500 px-6 py-2.5 text-xs"
-                                                            >
-                                                                Start Preparing
-                                                            </button>
-                                                        )}
-                                                        {order.status === 'preparing' && (
-                                                            <button
-                                                                onClick={() => updateStatus(order.id, 'ready_for_pickup')}
-                                                                className="btn btn-primary bg-green-600 hover:bg-green-700 border-green-600 px-6 py-2.5 text-xs"
-                                                            >
-                                                                Ready for Pickup
-                                                            </button>
-                                                        )}
-                                                        {['ready_for_pickup', 'assigned_to_rider', 'picked_up', 'in_transit'].includes(order.status) && (
-                                                            <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold flex items-center gap-2">
-                                                                <Truck className="w-4 h-4 animate-bounce" /> Dispatching
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
+                                                    )}
+                                                    {order.status === 'confirmed' && (
+                                                        <button
+                                                            onClick={() => updateStatus(order.id, 'preparing')}
+                                                            className="btn btn-primary bg-orange-500 hover:bg-orange-600 border-orange-500 px-6 py-2.5 text-xs"
+                                                        >
+                                                            Start Preparing
+                                                        </button>
+                                                    )}
+                                                    {order.status === 'preparing' && (
+                                                        <button
+                                                            onClick={() => updateStatus(order.id, 'ready_for_pickup')}
+                                                            className="btn btn-primary bg-green-600 hover:bg-green-700 border-green-600 px-6 py-2.5 text-xs"
+                                                        >
+                                                            Ready for Pickup
+                                                        </button>
+                                                    )}
+                                                    {['ready_for_pickup', 'assigned_to_rider', 'picked_up', 'in_transit'].includes(order.status) && (
+                                                        <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold flex items-center gap-2">
+                                                            <Truck className="w-4 h-4 animate-bounce" /> Dispatching
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
 
