@@ -3,13 +3,18 @@
 -- =============================================
 
 -- Notification types enum
-CREATE TYPE notification_type AS ENUM (
-  'order_update',
-  'new_job',
-  'payment_success',
-  'payment_failed',
-  'system_alert'
-);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_type') THEN
+        CREATE TYPE notification_type AS ENUM (
+          'order_update',
+          'new_job',
+          'payment_success',
+          'payment_failed',
+          'system_alert'
+        );
+    END IF;
+END $$;
 
 -- Notifications table
 CREATE TABLE IF NOT EXISTS notifications (
@@ -75,7 +80,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger for order status changes
 DROP TRIGGER IF EXISTS trigger_notify_order_status_change ON orders;
@@ -105,7 +110,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger for new available jobs
 DROP TRIGGER IF EXISTS trigger_notify_new_available_job ON orders;
