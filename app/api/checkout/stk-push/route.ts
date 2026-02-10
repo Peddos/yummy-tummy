@@ -19,22 +19,29 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
 
-        // Check if M-Pesa is configured. If not, simulate success for development.
-        const isConfigured =
-            process.env.MPESA_CONSUMER_KEY &&
-            !process.env.MPESA_CONSUMER_KEY.includes('your_') &&
-            process.env.MPESA_CONSUMER_SECRET &&
-            !process.env.MPESA_CONSUMER_SECRET.includes('your_')
+        // Determine if we should simulate payment
+        // Simulate if: 1) M-Pesa not configured OR 2) Explicitly in sandbox mode
+        const shouldSimulate =
+            !process.env.MPESA_CONSUMER_KEY ||
+            process.env.MPESA_CONSUMER_KEY.includes('your_') ||
+            !process.env.MPESA_CONSUMER_SECRET ||
+            process.env.MPESA_CONSUMER_SECRET.includes('your_') ||
+            process.env.MPESA_ENVIRONMENT === 'sandbox' // Force simulation in sandbox
 
-        if (!isConfigured) {
-            console.log('⚠️ M-Pesa not configured. Simulating successful payment for Order:', orderId)
+        if (shouldSimulate) {
+            console.log('💳 SIMULATING PAYMENT (Sandbox Mode) for Order:', orderId)
 
             // Get order details for financial calculation
-            const { data: order } = await supabaseAdmin
+            const { data: order, error: orderError } = await supabaseAdmin
                 .from('orders')
                 .select('subtotal, delivery_fee')
                 .eq('id', orderId)
-                .single() as { data: any }
+                .single() as { data: any, error: any }
+
+            if (orderError || !order) {
+                console.error('Failed to fetch order for simulation:', orderError)
+                throw new Error('Order not found')
+            }
 
             // Get commission rate
             const { data: settings } = await supabaseAdmin
@@ -46,12 +53,20 @@ export async function POST(req: Request) {
             const commissionRate = settings ? Number(settings.value) / 100 : 0.10
 
             // Calculate financial breakdown
-            const platformCommission = Math.round((order as any).subtotal * commissionRate * 100) / 100
-            const vendorShare = Math.round(((order as any).subtotal - platformCommission) * 100) / 100
-            const riderShare = (order as any).delivery_fee
+            const platformCommission = Math.round(order.subtotal * commissionRate * 100) / 100
+            const vendorShare = Math.round((order.subtotal - platformCommission) * 100) / 100
+            const riderShare = order.delivery_fee
+
+            console.log('💰 Financial Breakdown:', {
+                subtotal: order.subtotal,
+                deliveryFee: order.delivery_fee,
+                platformCommission,
+                vendorShare,
+                riderShare
+            })
 
             // Update transaction with financial breakdown
-            await supabaseAdmin
+            const { error: txError } = await supabaseAdmin
                 .from('transactions')
                 .update({
                     status: 'completed',
@@ -59,24 +74,34 @@ export async function POST(req: Request) {
                     vendor_share: vendorShare,
                     rider_share: riderShare,
                     platform_commission: platformCommission
-                })
+                } as any)
                 .eq('order_id', orderId)
                 .eq('type', 'customer_payment')
 
+            if (txError) {
+                console.error('Failed to update transaction:', txError)
+            } else {
+                console.log('✅ Transaction updated with financial breakdown')
+            }
+
             // Update order status to paid
-            await supabaseAdmin
+            const { error: orderUpdateError } = await supabaseAdmin
                 .from('orders')
-                .update({ status: 'paid' })
+                .update({ status: 'paid' } as any)
                 .eq('id', orderId)
 
-            console.log('✅ Simulated payment complete with financial breakdown')
+            if (orderUpdateError) {
+                console.error('Failed to update order status:', orderUpdateError)
+            } else {
+                console.log('✅ Order marked as PAID')
+            }
 
             return NextResponse.json({
                 MerchantRequestID: 'SIM-12345',
                 CheckoutRequestID: 'SIM-CHECKOUT-67890',
                 ResponseCode: '0',
-                ResponseDescription: 'Success (Simulated)',
-                CustomerMessage: 'Success (Simulated)'
+                ResponseDescription: 'Success (Simulated - Sandbox Mode)',
+                CustomerMessage: 'Payment simulated successfully'
             })
         }
 
