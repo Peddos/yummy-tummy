@@ -27,13 +27,49 @@ export async function POST(req: Request) {
             !process.env.MPESA_CONSUMER_SECRET.includes('your_')
 
         if (!isConfigured) {
-            console.log('⚠️ M-Pesa not configured. Simulating successful STK Push for Order:', orderId)
+            console.log('⚠️ M-Pesa not configured. Simulating successful payment for Order:', orderId)
 
-            // Simulating a "Paid" status directly in DB so user can test vendor/rider flow
+            // Get order details for financial calculation
+            const { data: order } = await supabaseAdmin
+                .from('orders')
+                .select('subtotal, delivery_fee')
+                .eq('id', orderId)
+                .single() as { data: any }
+
+            // Get commission rate
+            const { data: settings } = await supabaseAdmin
+                .from('system_settings')
+                .select('value')
+                .eq('key', 'vendor_commission_percentage')
+                .single() as { data: any }
+
+            const commissionRate = settings ? Number(settings.value) / 100 : 0.10
+
+            // Calculate financial breakdown
+            const platformCommission = Math.round((order as any).subtotal * commissionRate * 100) / 100
+            const vendorShare = Math.round(((order as any).subtotal - platformCommission) * 100) / 100
+            const riderShare = (order as any).delivery_fee
+
+            // Update transaction with financial breakdown
+            await supabaseAdmin
+                .from('transactions')
+                .update({
+                    status: 'completed',
+                    mpesa_receipt_number: 'SIM-' + Date.now(),
+                    vendor_share: vendorShare,
+                    rider_share: riderShare,
+                    platform_commission: platformCommission
+                })
+                .eq('order_id', orderId)
+                .eq('type', 'customer_payment')
+
+            // Update order status to paid
             await supabaseAdmin
                 .from('orders')
                 .update({ status: 'paid' })
                 .eq('id', orderId)
+
+            console.log('✅ Simulated payment complete with financial breakdown')
 
             return NextResponse.json({
                 MerchantRequestID: 'SIM-12345',
