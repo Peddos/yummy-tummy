@@ -18,6 +18,7 @@ export default function VendorOrdersPage() {
     const [updating, setUpdating] = useState<string | null>(null)
 
     useEffect(() => {
+        checkVendorProfile()
         fetchOrders()
 
         const channel = supabase
@@ -32,12 +33,40 @@ export default function VendorOrdersPage() {
         return () => { supabase.removeChannel(channel) }
     }, [])
 
+    const checkVendorProfile = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // Self-healing: Check if vendor record exists
+        const { data: vendor, error } = await supabase
+            .from('vendors')
+            .select('id')
+            .eq('id', user.id)
+            .single()
+
+        if (error || !vendor) {
+            console.log('Self-healing: Creating missing vendor record for:', user.id)
+            await (supabase.from('profiles') as any).upsert({
+                id: user.id,
+                role: 'vendor',
+                full_name: user.user_metadata?.business_name || user.user_metadata?.full_name || 'Vendor',
+                phone: user.user_metadata?.phone || '0000000000'
+            })
+
+            await (supabase.from('vendors') as any).upsert({
+                id: user.id,
+                business_name: user.user_metadata?.business_name || 'New Vendor',
+                address: 'Update your address in settings'
+            })
+        }
+    }
+
     const fetchOrders = async () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const { data, error } = await supabase
-            .from('orders')
+        const { data, error } = await (supabase
+            .from('orders') as any)
             .select(`
                 *,
                 customer:customer_id (full_name, phone),
@@ -55,14 +84,25 @@ export default function VendorOrdersPage() {
     }
 
     const updateStatus = async (orderId: string, status: string) => {
-        setUpdating(orderId)
-        const { error } = await supabase
-            .from('orders')
-            .update({ status } as any)
-            .eq('id', orderId)
+        try {
+            setUpdating(orderId)
+            const { error } = await supabase
+                .from('orders')
+                .update({ status } as any)
+                .eq('id', orderId)
 
-        if (!error) fetchOrders()
-        setUpdating(null)
+            if (error) {
+                console.error('Update Error:', error)
+                alert(`Failed to update order status: ${error.message}`)
+            } else {
+                await fetchOrders()
+            }
+        } catch (err: any) {
+            console.error('Update Exception:', err)
+            alert(`An unexpected error occurred: ${err.message}`)
+        } finally {
+            setUpdating(null)
+        }
     }
 
     const deleteOrder = async (id: string) => {
@@ -155,24 +195,34 @@ export default function VendorOrdersPage() {
                                                     {order.status === 'paid' && (
                                                         <button
                                                             onClick={() => updateStatus(order.id, 'confirmed')}
+                                                            disabled={updating === order.id}
                                                             className="btn btn-primary px-6 py-2.5 text-xs flex items-center gap-2"
                                                         >
-                                                            <CheckCircle2 className="w-4 h-4" /> Accept Order
+                                                            {updating === order.id ? (
+                                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                                            ) : (
+                                                                <CheckCircle2 className="w-4 h-4" />
+                                                            )}
+                                                            Accept Order
                                                         </button>
                                                     )}
                                                     {order.status === 'confirmed' && (
                                                         <button
                                                             onClick={() => updateStatus(order.id, 'preparing')}
-                                                            className="btn btn-primary bg-orange-500 hover:bg-orange-600 border-orange-500 px-6 py-2.5 text-xs"
+                                                            disabled={updating === order.id}
+                                                            className="btn btn-primary bg-orange-500 hover:bg-orange-600 border-orange-500 px-6 py-2.5 text-xs flex items-center gap-2"
                                                         >
+                                                            {updating === order.id && <Loader2 className="w-4 h-4 animate-spin" />}
                                                             Start Preparing
                                                         </button>
                                                     )}
                                                     {order.status === 'preparing' && (
                                                         <button
                                                             onClick={() => updateStatus(order.id, 'ready_for_pickup')}
-                                                            className="btn btn-primary bg-green-600 hover:bg-green-700 border-green-600 px-6 py-2.5 text-xs"
+                                                            disabled={updating === order.id}
+                                                            className="btn btn-primary bg-green-600 hover:bg-green-700 border-green-600 px-6 py-2.5 text-xs flex items-center gap-2"
                                                         >
+                                                            {updating === order.id && <Loader2 className="w-4 h-4 animate-spin" />}
                                                             Ready for Pickup
                                                         </button>
                                                     )}

@@ -10,17 +10,43 @@
 -- Function to auto-create user profiles based on role
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_role user_role;
+    v_full_name TEXT;
+    v_phone TEXT;
 BEGIN
-    -- Create profile in appropriate table based on metadata
-    IF NEW.raw_user_meta_data->>'role' = 'vendor' THEN
-        INSERT INTO public.vendors (id, business_name, email)
-        VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'business_name', 'New Vendor'), NEW.email);
-    ELSIF NEW.raw_user_meta_data->>'role' = 'rider' THEN
-        INSERT INTO public.riders (id, email)
-        VALUES (NEW.id, NEW.email);
-    ELSE
-        INSERT INTO public.customers (id, full_name, email)
-        VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'full_name', 'Customer'), NEW.email);
+    -- 1. Extract and map the role
+    v_role := (COALESCE(NEW.raw_user_meta_data->>'role', 'customer'))::user_role;
+    
+    -- 2. Extract common fields
+    v_full_name := COALESCE(
+        NEW.raw_user_meta_data->>'full_name', 
+        NEW.raw_user_meta_data->>'business_name',
+        'New User'
+    );
+    v_phone := COALESCE(NEW.raw_user_meta_data->>'phone', '0000000000');
+
+    -- 3. Create the base profile first (Critical Fix)
+    INSERT INTO public.profiles (id, role, full_name, phone)
+    VALUES (NEW.id, v_role, v_full_name, v_phone)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- 4. Create specialized profile based on role
+    IF v_role = 'vendor' THEN
+        INSERT INTO public.vendors (id, business_name, address)
+        VALUES (
+            NEW.id, 
+            COALESCE(NEW.raw_user_meta_data->>'business_name', 'New Vendor'),
+            COALESCE(NEW.raw_user_meta_data->>'address', 'Pending Address')
+        )
+        ON CONFLICT (id) DO NOTHING;
+    ELSIF v_role = 'rider' THEN
+        INSERT INTO public.riders (id, vehicle_type)
+        VALUES (
+            NEW.id, 
+            COALESCE(NEW.raw_user_meta_data->>'vehicle_type', 'Bike')
+        )
+        ON CONFLICT (id) DO NOTHING;
     END IF;
     
     RETURN NEW;
@@ -34,28 +60,8 @@ CREATE TRIGGER on_auth_user_created
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_user();
 
--- ============================================
--- ORDER NUMBER INCREMENT
--- ============================================
-
--- Function to generate incremental order numbers
-CREATE OR REPLACE FUNCTION increment_order_number()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.order_number := COALESCE(
-        (SELECT MAX(order_number) FROM orders) + 1,
-        1000
-    );
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Trigger to auto-increment order numbers
-DROP TRIGGER IF EXISTS set_order_number ON orders;
-CREATE TRIGGER set_order_number
-    BEFORE INSERT ON orders
-    FOR EACH ROW
-    EXECUTE FUNCTION increment_order_number();
+-- NOTE: Order number generation is handled by the API Layer or generate_order_number_trigger in schema.sql.
+-- Redundant increment_order_number removed to avoid conflicts.
 
 -- ============================================
 -- LOGGING

@@ -10,10 +10,16 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- =============================================
 
 -- User roles enum
-CREATE TYPE user_role AS ENUM ('customer', 'vendor', 'rider', 'admin');
+-- User roles enum
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'user_role') THEN
+        CREATE TYPE user_role AS ENUM ('customer', 'vendor', 'rider', 'admin');
+    END IF;
+END $$;
 
 -- User profiles (extends auth.users)
-CREATE TABLE profiles (
+CREATE TABLE IF NOT EXISTS profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   role user_role NOT NULL DEFAULT 'customer',
   full_name TEXT NOT NULL,
@@ -24,7 +30,7 @@ CREATE TABLE profiles (
 );
 
 -- Vendors table
-CREATE TABLE vendors (
+CREATE TABLE IF NOT EXISTS vendors (
   id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   business_name TEXT NOT NULL,
   description TEXT,
@@ -42,7 +48,7 @@ CREATE TABLE vendors (
 );
 
 -- Riders table
-CREATE TABLE riders (
+CREATE TABLE IF NOT EXISTS riders (
   id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
   vehicle_type TEXT NOT NULL,
   vehicle_number TEXT,
@@ -59,7 +65,7 @@ CREATE TABLE riders (
 -- =============================================
 
 -- Menu categories
-CREATE TABLE menu_categories (
+CREATE TABLE IF NOT EXISTS menu_categories (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT NOT NULL,
   description TEXT,
@@ -67,7 +73,7 @@ CREATE TABLE menu_categories (
 );
 
 -- Menu items
-CREATE TABLE menu_items (
+CREATE TABLE IF NOT EXISTS menu_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   vendor_id UUID NOT NULL REFERENCES vendors(id) ON DELETE CASCADE,
   category_id UUID REFERENCES menu_categories(id) ON DELETE SET NULL,
@@ -86,23 +92,28 @@ CREATE TABLE menu_items (
 -- =============================================
 
 -- Order status enum
-CREATE TYPE order_status AS ENUM (
-  'pending_payment',
-  'payment_failed',
-  'paid',
-  'confirmed',
-  'preparing',
-  'ready_for_pickup',
-  'assigned_to_rider',
-  'picked_up',
-  'in_transit',
-  'delivered',
-  'completed',
-  'cancelled'
-);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'order_status') THEN
+        CREATE TYPE order_status AS ENUM (
+          'pending_payment',
+          'payment_failed',
+          'paid',
+          'confirmed',
+          'preparing',
+          'ready_for_pickup',
+          'assigned_to_rider',
+          'picked_up',
+          'in_transit',
+          'delivered',
+          'completed',
+          'cancelled'
+        );
+    END IF;
+END $$;
 
 -- Orders table
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_number TEXT UNIQUE NOT NULL,
   customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -131,7 +142,7 @@ CREATE TABLE orders (
 );
 
 -- Order items
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   menu_item_id UUID NOT NULL REFERENCES menu_items(id) ON DELETE CASCADE,
@@ -147,25 +158,35 @@ CREATE TABLE order_items (
 -- =============================================
 
 -- Transaction types
-CREATE TYPE transaction_type AS ENUM (
-  'customer_payment',
-  'vendor_payout',
-  'rider_payout',
-  'refund',
-  'platform_commission'
-);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_type') THEN
+        CREATE TYPE transaction_type AS ENUM (
+          'customer_payment',
+          'vendor_payout',
+          'rider_payout',
+          'refund',
+          'platform_commission'
+        );
+    END IF;
+END $$;
 
 -- Transaction status
-CREATE TYPE transaction_status AS ENUM (
-  'pending',
-  'processing',
-  'completed',
-  'failed',
-  'refunded'
-);
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'transaction_status') THEN
+        CREATE TYPE transaction_status AS ENUM (
+          'pending',
+          'processing',
+          'completed',
+          'failed',
+          'refunded'
+        );
+    END IF;
+END $$;
 
 -- Transactions table
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID REFERENCES orders(id) ON DELETE SET NULL,
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -194,7 +215,7 @@ CREATE TABLE transactions (
 -- =============================================
 
 -- Reviews table
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   customer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -287,7 +308,10 @@ CREATE TRIGGER update_menu_items_updated_at
 CREATE OR REPLACE FUNCTION generate_order_number()
 RETURNS TRIGGER AS $$
 BEGIN
-  NEW.order_number = 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(NEXTVAL('order_number_seq')::TEXT, 6, '0');
+  -- Only generate if order_number is not already set (e.g., by the API)
+  IF NEW.order_number IS NULL THEN
+    NEW.order_number = 'ORD-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || LPAD(NEXTVAL('order_number_seq')::TEXT, 6, '0');
+  END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
