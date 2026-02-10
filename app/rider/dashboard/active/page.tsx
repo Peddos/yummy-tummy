@@ -107,7 +107,10 @@ export default function ActiveDeliveriesPage() {
             .update({ status } as any)
             .eq('id', order.id)
 
-        if (!error) {
+        if (error) {
+            console.error('Update Error:', error)
+            alert(`Failed to update order status: ${error.message}`)
+        } else {
             if (status === 'delivered') {
                 alert('🎉 Delivery Completed! Great job.')
                 router.push('/rider/dashboard')

@@ -98,7 +98,7 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to update transaction financial breakdown when payment completes
 CREATE OR REPLACE FUNCTION update_transaction_on_payment()
@@ -132,7 +132,7 @@ BEGIN
     
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Drop existing triggers if they exist
 DROP TRIGGER IF EXISTS trigger_process_order_financials ON orders;
