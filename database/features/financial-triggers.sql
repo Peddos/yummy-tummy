@@ -37,8 +37,9 @@ BEGIN
     WHERE id = p_order_id;
     
     -- Get commission rate from system settings (default 10%)
+    -- Robust casting: convert potential NULL to '0' and strip non-numeric characters before cast
     v_commission_rate := COALESCE(
-        (get_system_setting('vendor_commission_percentage')::DECIMAL / 100),
+        (regexp_replace(COALESCE(get_system_setting('vendor_commission_percentage'), '10'), '[^0-9.]', '', 'g')::DECIMAL / 100),
         0.10
     );
     

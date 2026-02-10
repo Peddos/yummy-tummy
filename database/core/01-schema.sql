@@ -249,6 +249,19 @@ CREATE TABLE addresses (
 );
 
 -- =============================================
+-- SYSTEM CONFIGURATION
+-- =============================================
+
+-- System settings table
+CREATE TABLE IF NOT EXISTS system_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- =============================================
 -- INDEXES FOR PERFORMANCE
 -- =============================================
 
