@@ -25,7 +25,7 @@ export default function CheckoutPage() {
     })
     const [error, setError] = useState<string | null>(null)
     const [orderId, setOrderId] = useState<string | null>(null)
-    const [isSimulated, setIsSimulated] = useState(false)
+    const [paidAmount, setPaidAmount] = useState(0) // Store actual amount paid
 
     const [deliveryFee, setDeliveryFee] = useState(0)
     const subtotal = getTotal()
@@ -101,6 +101,7 @@ export default function CheckoutPage() {
             if (!orderResponse.ok) throw new Error(orderData.error || 'Failed to create order')
 
             setOrderId(orderData.id)
+            setPaidAmount(total) // Store the actual amount being paid
 
             const mpesaResponse = await fetch('/api/checkout/stk-push', {
                 method: 'POST',
@@ -116,10 +117,6 @@ export default function CheckoutPage() {
             if (!mpesaResponse.ok) {
                 await fetch(`/api/orders/${orderData.id}`, { method: 'DELETE' }).catch(() => { })
                 throw new Error(mpesaData.error || 'M-Pesa payment failed to initiate. Please try again.')
-            }
-
-            if (mpesaData.ResponseDescription?.includes('Simulated')) {
-                setIsSimulated(true)
             }
 
             setStep(2)
@@ -141,24 +138,12 @@ export default function CheckoutPage() {
                         <div className="w-24 h-24 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
                             <CheckCircle2 className="w-14 h-14" />
                         </div>
-                        <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Order Secured!</h2>
+                        <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Payment Processing</h2>
 
                         <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
-                            {isSimulated ? (
-                                <div className="space-y-3">
-                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                        <Info className="w-3.5 h-3.5" />
-                                        Sandbox Verification
-                                    </div>
-                                    <p className="text-gray-500 text-sm font-medium">
-                                        Payment auto-confirmed for testing. Your delicious meal is being prepared!
-                                    </p>
-                                </div>
-                            ) : (
-                                <p className="text-gray-600 text-sm font-medium leading-relaxed">
-                                    Final step: Check your phone for the M-Pesa STK prompt to authorize <span className="font-black text-gray-900 underline decoration-[var(--color-primary)] decoration-2">{formatCurrency(total)}</span>.
-                                </p>
-                            )}
+                            <p className="text-gray-600 text-sm font-medium leading-relaxed">
+                                Your order has been created. Payment of <span className="font-black text-gray-900">{formatCurrency(paidAmount)}</span> is being processed.
+                            </p>
                         </div>
 
                         <div className="space-y-4">
