@@ -104,13 +104,31 @@ export default function AdminDashboard() {
 
             const deliveredOrders = orders?.filter((o: any) => o.status === 'delivered') || []
 
+            // Calculate total revenue (GMV)
             const totalRevenue = deliveredOrders.reduce((sum: number, o: any) => sum + Number(o.total), 0)
-            const riderEarnings = deliveredOrders.reduce((sum: number, o: any) => sum + Number(o.delivery_fee), 0)
-            const vendorSalesTotal = deliveredOrders.reduce((sum: number, o: any) => sum + Number(o.subtotal), 0)
 
-            const commissionRate = currentSettings.vendor_commission_percentage / 100
-            const platformEarnings = vendorSalesTotal * commissionRate
-            const vendorEarnings = vendorSalesTotal - platformEarnings
+            // Get platform earnings from transactions
+            const { data: completedTransactions } = await supabase
+                .from('transactions')
+                .select('platform_commission, vendor_share, rider_share')
+                .eq('type', 'customer_payment')
+                .eq('status', 'completed')
+
+            const platformEarnings = (completedTransactions as any[])?.reduce(
+                (sum: number, t: any) => sum + (Number(t.platform_commission) || 0),
+                0
+            ) || 0
+
+            // Get vendor and rider earnings from their tables (already updated by triggers)
+            const vendorEarnings = (vendors as any[])?.reduce(
+                (sum: number, v: any) => sum + (Number(v.total_earnings) || 0),
+                0
+            ) || 0
+
+            const riderEarnings = (riders as any[])?.reduce(
+                (sum: number, r: any) => sum + (Number(r.total_earnings) || 0),
+                0
+            ) || 0
 
             setStats({
                 totalRevenue,

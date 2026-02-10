@@ -40,8 +40,6 @@ export default function ActiveDeliveriesPage() {
             }
         }
 
-        console.log('Rider Fetching Active Order for UID:', user.id)
-
         // Stage 1: Simple fetch to confirm basic access
         const { data: basicOrder, error: basicError } = await supabase
             .from('orders')
@@ -54,8 +52,6 @@ export default function ActiveDeliveriesPage() {
         if (basicError) {
             console.error('Basic Access Error (Check RLS):', basicError)
         }
-
-        console.log('Basic Order Check:', basicOrder)
 
         // Stage 2: Full fetch with joins
         const { data, error } = await supabase

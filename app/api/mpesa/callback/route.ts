@@ -40,6 +40,39 @@ export async function POST(request: NextRequest) {
 
             console.log(`PAYMENT VERIFIED: Receipt ${mpesaReceipt} | Amount: ${amount}`)
 
+            // Verify financial breakdown exists, calculate if missing
+            let vendorShare = tx.vendor_share
+            let riderShare = tx.rider_share
+            let platformCommission = tx.platform_commission
+
+            if (!vendorShare || !riderShare || !platformCommission) {
+                console.warn('FINANCIAL BREAKDOWN MISSING - Calculating now...')
+
+                // Fetch order details
+                const { data: order } = await supabaseAdmin
+                    .from('orders')
+                    .select('subtotal, delivery_fee')
+                    .eq('id', tx.order_id)
+                    .single()
+
+                if (order) {
+                    // Fetch commission rate
+                    const { data: settings } = await supabaseAdmin
+                        .from('system_settings')
+                        .select('value')
+                        .eq('key', 'vendor_commission_percentage')
+                        .single()
+
+                    const commissionRate = settings ? Number((settings as any).value) / 100 : 0.10
+
+                    platformCommission = Math.round((order as any).subtotal * commissionRate * 100) / 100
+                    vendorShare = Math.round(((order as any).subtotal - platformCommission) * 100) / 100
+                    riderShare = (order as any).delivery_fee
+
+                    console.log(`CALCULATED: Vendor=${vendorShare}, Rider=${riderShare}, Platform=${platformCommission}`)
+                }
+            }
+
             // Update Transaction
             await (supabaseAdmin
                 .from('transactions') as any)
@@ -47,9 +80,13 @@ export async function POST(request: NextRequest) {
                     status: 'completed',
                     mpesa_receipt_number: mpesaReceipt,
                     completed_at: new Date().toISOString(),
+                    vendor_share: vendorShare,
+                    rider_share: riderShare,
+                    platform_commission: platformCommission,
                     metadata: {
                         ...((tx.metadata as object) || {}),
-                        full_callback: Body.stkCallback
+                        full_callback: Body.stkCallback,
+                        financial_verified: true
                     }
                 })
                 .eq('id', tx.id)

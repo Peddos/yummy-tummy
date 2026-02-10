@@ -46,8 +46,6 @@ export default function OrderTrackingPage() {
             setLoading(true)
             setError(null)
 
-            console.log('Fetching order with ID:', id)
-
             // Stage 1: Fetch base order (Minimal Joins)
             const { data: baseOrder, error: baseErr } = await supabase
                 .from('orders')

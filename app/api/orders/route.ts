@@ -62,7 +62,22 @@ export async function POST(req: Request) {
 
         if (itemsError) throw itemsError
 
-        // 3. Create initial transaction record
+        // 3. Fetch system settings for financial calculations
+        const { data: settingsData } = await supabase
+            .from('system_settings')
+            .select('key, value')
+            .in('key', ['vendor_commission_percentage'])
+
+        const commissionRate = settingsData?.find(s => s.key === 'vendor_commission_percentage')
+            ? Number(settingsData.find(s => s.key === 'vendor_commission_percentage')!.value) / 100
+            : 0.10 // Default 10%
+
+        // Calculate financial breakdown
+        const platformCommission = Math.round(order.subtotal * commissionRate * 100) / 100
+        const vendorShare = Math.round((order.subtotal - platformCommission) * 100) / 100
+        const riderShare = deliveryFee
+
+        // 4. Create transaction record with complete financial breakdown
         const { error: transError } = await supabase
             .from('transactions')
             .insert({
@@ -70,7 +85,14 @@ export async function POST(req: Request) {
                 user_id: user.id,
                 type: 'customer_payment',
                 status: 'pending',
-                amount: total
+                amount: total,
+                vendor_share: vendorShare,
+                rider_share: riderShare,
+                platform_commission: platformCommission,
+                metadata: {
+                    commission_rate: commissionRate,
+                    calculated_at: new Date().toISOString()
+                }
             })
 
         if (transError) throw transError
