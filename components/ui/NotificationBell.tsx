@@ -108,7 +108,7 @@ export default function NotificationBell() {
             setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n))
             setUnreadCount(prev => Math.max(0, prev - 1))
 
-            await supabase.from('notifications').update({ is_read: true }).eq('id', id)
+            await supabase.from('notifications').update({ is_read: true } as any).eq('id', id)
         } else {
             // Mark all as read
             const { data: { user } } = await supabase.auth.getUser()
@@ -118,7 +118,7 @@ export default function NotificationBell() {
             setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
             setUnreadCount(0)
 
-            await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false)
+            await supabase.from('notifications').update({ is_read: true } as any).eq('user_id', user.id).eq('is_read', false)
         }
     }
 
@@ -149,54 +149,63 @@ export default function NotificationBell() {
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2">
-                        <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-gray-50/50">
-                            <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest">Alerts</h3>
+                    <div className="absolute right-0 -mr-16 md:mr-0 mt-4 w-80 md:w-96 bg-white rounded-3xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 ring-1 ring-gray-900/5">
+                        <div className="p-4 border-b border-gray-50 flex items-center justify-between bg-white/50 backdrop-blur-xl">
+                            <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
+                                <Bell className="w-3 h-3 text-[var(--color-primary)]" />
+                                Notifications
+                            </h3>
                             {unreadCount > 0 && (
                                 <button
                                     onClick={() => markAsRead()}
-                                    className="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                                    className="text-[10px] font-bold text-[var(--color-primary)] hover:text-[var(--color-primary)]/80 flex items-center gap-1 bg-[var(--color-primary)]/10 px-2 py-1 rounded-lg transition-colors"
                                 >
-                                    <Check className="w-3 h-3" /> Mark all read
+                                    <Check className="w-3 h-3" /> Mark read
                                 </button>
                             )}
                         </div>
 
-                        <div className="max-h-[400px] overflow-y-auto">
+                        <div className="max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 hover:scrollbar-thumb-gray-300">
                             {notifications.length === 0 ? (
-                                <div className="p-8 text-center">
-                                    <Bell className="w-8 h-8 text-gray-200 mx-auto mb-3" />
-                                    <p className="text-xs text-gray-400 font-medium">No alerts at the moment</p>
+                                <div className="p-10 text-center">
+                                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Bell className="w-8 h-8 text-gray-200" />
+                                    </div>
+                                    <p className="text-sm font-bold text-gray-900 mb-1">All caught up!</p>
+                                    <p className="text-xs text-gray-400 font-medium">No new alerts to show</p>
                                 </div>
                             ) : (
                                 <div className="divide-y divide-gray-50">
                                     {notifications.map((n) => (
                                         <div
                                             key={n.id}
-                                            className={`p-4 hover:bg-gray-50 transition-colors relative cursor-pointer ${!n.is_read ? 'bg-orange-50/30' : ''}`}
+                                            className={`p-4 hover:bg-gray-50 transition-all relative cursor-pointer group ${!n.is_read ? 'bg-[var(--color-primary)]/5' : ''}`}
                                             onClick={() => {
                                                 if (!n.is_read) markAsRead(n.id)
-                                                // Optional: Navigate to order if order_id exists
                                                 setIsOpen(false)
                                             }}
                                         >
-                                            <div className="flex gap-3">
-                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${!n.is_read ? 'bg-white shadow-sm' : 'bg-gray-50'}`}>
+                                            <div className="flex gap-4">
+                                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-colors ${!n.is_read ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:shadow-sm'}`}>
                                                     {getIcon(n.type)}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className={`text-xs font-bold text-gray-900 mb-0.5 ${!n.is_read ? 'pr-2' : ''}`}>
-                                                        {n.title}
-                                                    </p>
-                                                    <p className="text-[11px] text-gray-500 leading-relaxed mb-2 line-clamp-2">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <p className={`text-xs font-bold text-gray-900 ${!n.is_read ? '' : 'text-gray-600'}`}>
+                                                            {n.title}
+                                                        </p>
+                                                        <span className="text-[9px] font-bold text-gray-300 whitespace-nowrap ml-2">
+                                                            {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">
                                                         {n.message}
-                                                    </p>
-                                                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-tighter">
-                                                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                                                     </p>
                                                 </div>
                                                 {!n.is_read && (
-                                                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1 flex-shrink-0" />
+                                                    <div className="self-center">
+                                                        <div className="w-2 h-2 bg-[var(--color-primary)] rounded-full ring-4 ring-[var(--color-primary)]/20" />
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -205,10 +214,10 @@ export default function NotificationBell() {
                             )}
                         </div>
 
-                        <div className="p-3 border-t border-gray-50 bg-gray-50/30">
-                            <span className="block text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                                Real-time Updates Active
-                            </span>
+                        <div className="p-3 border-t border-gray-50 bg-gray-50/50 backdrop-blur-sm text-center">
+                            <Link href="/customer/notifications" className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-[var(--color-primary)] transition-colors">
+                                View All History
+                            </Link>
                         </div>
                     </div>
                 </>

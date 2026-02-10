@@ -21,6 +21,7 @@ export default function CustomerDashboard() {
     const [vendors, setVendors] = useState<any[]>([])
     const [activeOrders, setActiveOrders] = useState<any[]>([])
     const [searchQuery, setSearchQuery] = useState('')
+    const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid')
 
     useEffect(() => {
         checkUser()
@@ -176,18 +177,19 @@ export default function CustomerDashboard() {
                 )}
 
                 {/* Filter Categories */}
-                <div className="mb-10 overflow-hidden">
+                <div className="mb-8 overflow-hidden">
                     <div className="flex items-center justify-between mb-4 px-1">
-                        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Cuisine Categories</h2>
+                        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Explore Categories</h2>
                         <Filter className="w-3.5 h-3.5 text-gray-300" />
                     </div>
                     <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
-                        {['All Discovery', 'Fast Food', 'Pizza & Italian', 'Asian Fusion', 'Healthy Greens', 'Sweet Treats'].map((cat) => (
+                        {['All Discovery', 'Healthy Herbs', 'Groceries', 'Fast Food', 'Asian Fusion', 'Sweet Treats', 'Pharmacy', 'Drinks'].map((cat) => (
                             <button
                                 key={cat}
-                                className={`px-6 py-3 rounded-2xl whitespace-nowrap text-xs font-black tracking-widest transition-all uppercase ${cat.includes('All')
-                                    ? 'bg-gray-900 text-white shadow-xl shadow-gray-300'
-                                    : 'bg-white text-gray-500 border border-gray-100 hover:border-gray-200 shadow-sm'
+                                onClick={() => setSearchQuery(cat === 'All Discovery' ? '' : cat)}
+                                className={`px-5 py-2.5 rounded-xl whitespace-nowrap text-xs font-black tracking-wide transition-all uppercase ${(searchQuery === cat || (cat === 'All Discovery' && searchQuery === ''))
+                                    ? 'bg-gray-900 text-white shadow-lg shadow-gray-200 transform scale-105'
+                                    : 'bg-white text-gray-500 border border-gray-100 hover:border-gray-300 shadow-sm'
                                     }`}
                             >
                                 {cat}
@@ -196,22 +198,100 @@ export default function CustomerDashboard() {
                     </div>
                 </div>
 
-                {/* Vendors Grid */}
+                {/* Top Performers Spotlight */}
+                {vendors.some(v => v.rating >= 4.5) && (
+                    <div className="mb-10">
+                        <div className="flex items-center gap-2 mb-4 px-1">
+                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Top Performers</h2>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {vendors.filter(v => v.rating >= 4.5).slice(0, 2).map(vendor => (
+                                <div
+                                    key={vendor.id}
+                                    onClick={() => router.push(`/customer/vendor/${vendor.id}`)}
+                                    className="bg-gray-900 rounded-3xl p-6 relative overflow-hidden cursor-pointer group shadow-2xl shadow-gray-200"
+                                >
+                                    <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[var(--color-primary)] to-purple-600 opacity-20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:opacity-30 transition-opacity" />
+                                    <div className="relative z-10">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <span className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-lg text-white text-[10px] font-black uppercase tracking-widest mb-2 inline-block">
+                                                    Featured
+                                                </span>
+                                                <h3 className="text-2xl font-black text-white mb-1 group-hover:text-[var(--color-primary)] transition-colors">{vendor.business_name}</h3>
+                                                <p className="text-gray-400 text-xs font-medium">{vendor.cuisine_type} • {vendor.address}</p>
+                                            </div>
+                                            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white font-black text-lg border border-white/10">
+                                                {vendor.rating.toFixed(1)}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-xs font-bold text-gray-400">
+                                            <div className="flex items-center gap-1.5">
+                                                <Clock className="w-3.5 h-3.5" />
+                                                <span>Under 30 mins</span>
+                                            </div>
+                                            <div className="w-1 h-1 rounded-full bg-gray-600" />
+                                            <div className="flex items-center gap-1.5 text-[var(--color-primary)]">
+                                                <TrendingUp className="w-3.5 h-3.5" />
+                                                <span>Trending today</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Vendors Grid / Map Toggle */}
                 <div>
                     <div className="flex items-center justify-between mb-6 px-1">
-                        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Available Restaurants</h2>
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Nearby Locations</h2>
+                            <div className="flex bg-gray-100 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    <Package className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('map')}
+                                    className={`p-1.5 rounded-md transition-all ${viewMode === 'map' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+                                >
+                                    <MapIcon className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                            {filteredVendors.length} Locations
+                            {filteredVendors.length} Spots
                         </span>
                     </div>
 
-                    {filteredVendors.length === 0 ? (
+                    {viewMode === 'map' ? (
+                        <div className="w-full h-96 bg-gray-100 rounded-3xl overflow-hidden relative group">
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-gray-50/50 backdrop-blur-sm z-10">
+                                <MapPin className="w-12 h-12 text-gray-300 mb-4 animate-bounce" />
+                                <h3 className="text-lg font-black text-gray-900 mb-2">Live Map View</h3>
+                                <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">Explore vendors visually on our interactive map. (Integration pending API key)</p>
+                                <button
+                                    onClick={() => setViewMode('grid')}
+                                    className="px-6 py-3 bg-[var(--color-primary)] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-opacity-90 transition-all shadow-xl shadow-[var(--color-primary)]/20"
+                                >
+                                    Switch to List
+                                </button>
+                            </div>
+                            {/* Mock Map Background */}
+                            <div className="absolute inset-0 opacity-20 grayscale bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-cover bg-center" />
+                        </div>
+                    ) : filteredVendors.length === 0 ? (
                         <div className="text-center py-20 card border-none shadow-sm">
                             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <ShoppingBag className="w-8 h-8 text-gray-200" />
                             </div>
                             <h3 className="text-xl font-black text-gray-900 mb-2">Discovery Failed</h3>
-                            <p className="text-gray-400 text-sm font-medium">We couldn't find any restaurants matching your criteria.</p>
+                            <p className="text-gray-400 text-sm font-medium">We couldn't find any spots matching your criteria.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -264,9 +344,6 @@ export default function CustomerDashboard() {
                                             <span className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[8px] font-black uppercase tracking-widest border border-gray-100">
                                                 {vendor.cuisine_type || 'Gourmet'}
                                             </span>
-                                            <span className="px-3 py-1 bg-orange-50 text-orange-500 rounded-lg text-[8px] font-black uppercase tracking-widest border border-orange-100">
-                                                Global Express
-                                            </span>
                                         </div>
 
                                         <div className="flex items-center justify-between pt-4 border-t border-gray-50">
@@ -277,7 +354,7 @@ export default function CustomerDashboard() {
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <MapIcon className="w-4 h-4 text-green-500" />
-                                                    <span>1.8 KM</span>
+                                                    <span>nearby</span>
                                                 </div>
                                             </div>
                                             <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-[var(--color-primary)] group-hover:text-white transition-all">
