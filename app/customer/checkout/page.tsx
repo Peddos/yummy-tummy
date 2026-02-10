@@ -27,9 +27,9 @@ export default function CheckoutPage() {
     const [orderId, setOrderId] = useState<string | null>(null)
     const [isSimulated, setIsSimulated] = useState(false)
 
-    const [deliveryFee, setDeliveryFee] = useState(0) // Default to 0 initially, will optionally fetch actual cost for internal use
+    const [deliveryFee, setDeliveryFee] = useState(0)
     const subtotal = getTotal()
-    const total = subtotal // Inclusive pricing: Customer pays menu price only
+    const total = subtotal + deliveryFee // Fixed: Now properly adds delivery fee
 
     useEffect(() => {
         if (items.length === 0 && step !== 2) {
@@ -317,7 +317,7 @@ export default function CheckoutPage() {
                                     </div>
                                     <div className="flex justify-between text-xs font-bold text-gray-400">
                                         <span>LOGISTICS FEE</span>
-                                        <span className="text-green-600">Included</span>
+                                        <span>{formatCurrency(deliveryFee)}</span>
                                     </div>
                                     <div className="flex justify-between items-end pt-4">
                                         <div>

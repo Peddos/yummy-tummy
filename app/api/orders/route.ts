@@ -35,7 +35,7 @@ export async function POST(req: Request) {
                 customer_id: user.id,
                 vendor_id: vendorId,
                 status: 'pending_payment',
-                subtotal: subtotal - deliveryFee, // Internal split: Real Subtotal = Paid Total - Fixed Delivery Fee
+                subtotal, // Fixed: Use actual items subtotal
                 delivery_fee: deliveryFee,
                 total,
                 delivery_address: deliveryAddress,
