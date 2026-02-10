@@ -130,6 +130,37 @@ export default function CheckoutPage() {
         }
     }
 
+    // Monitor order status after payment initiated
+    useEffect(() => {
+        if (!orderId || step !== 2) return
+
+        // Subscribe to order status changes
+        const channel = supabase
+            .channel(`order-${orderId}`)
+            .on('postgres_changes', {
+                event: 'UPDATE',
+                schema: 'public',
+                table: 'orders',
+                filter: `id=eq.${orderId}`
+            }, (payload) => {
+                const newStatus = (payload.new as any).status
+                console.log('Order status updated:', newStatus)
+
+                // Redirect when payment is confirmed
+                if (newStatus === 'paid') {
+                    console.log('Payment confirmed! Redirecting to order tracking...')
+                    setTimeout(() => {
+                        router.push(`/customer/orders/${orderId}`)
+                    }, 1500) // Small delay for better UX
+                }
+            })
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [orderId, step, router])
+
     if (step === 2) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -144,10 +175,13 @@ export default function CheckoutPage() {
                             <p className="text-gray-600 text-sm font-medium leading-relaxed">
                                 Your order has been created. Payment of <span className="font-black text-gray-900">{formatCurrency(paidAmount)}</span> is being processed.
                             </p>
+                            <p className="text-gray-400 text-xs mt-3 font-medium">
+                                You'll be redirected automatically once payment is confirmed...
+                            </p>
                         </div>
 
                         <div className="space-y-4">
-                            <Link href="/customer/orders" className="btn btn-primary w-full py-4 text-lg shadow-xl shadow-[var(--color-primary)]/20 active:scale-95 transition-all">
+                            <Link href={`/customer/orders/${orderId}`} className="btn btn-primary w-full py-4 text-lg shadow-xl shadow-[var(--color-primary)]/20 active:scale-95 transition-all">
                                 Track My Order
                             </Link>
                             <Link href="/customer" className="btn btn-outline w-full py-4 text-gray-500 font-bold active:scale-95 transition-all border-gray-200">
