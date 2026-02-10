@@ -109,6 +109,7 @@ export default function ActiveDeliveriesPage() {
 
         if (!error) {
             if (status === 'delivered') {
+                alert('🎉 Delivery Completed! Great job.')
                 router.push('/rider/dashboard')
             } else {
                 fetchActiveOrder()
@@ -215,9 +216,14 @@ export default function ActiveDeliveriesPage() {
                                 <h2 className="text-xl font-bold text-gray-900">{order.customer?.full_name}</h2>
                             </div>
                             <div className="flex gap-2">
-                                <button className="w-11 h-11 flex items-center justify-center bg-blue-50 text-blue-600 rounded-2xl">
-                                    <MessageSquare className="w-5 h-5" />
-                                </button>
+                                <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.delivery_address)}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-11 h-11 flex items-center justify-center bg-blue-50 text-blue-600 rounded-2xl"
+                                >
+                                    <Navigation className="w-5 h-5" />
+                                </a>
                                 <a href={`tel:${order.customer?.phone}`} className="w-11 h-11 flex items-center justify-center bg-blue-50 text-blue-600 rounded-2xl">
                                     <Phone className="w-5 h-5" />
                                 </a>
