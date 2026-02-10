@@ -13,6 +13,7 @@ import {
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import NotificationBell from '@/components/ui/NotificationBell'
+import CategoriesManager from '@/components/admin/CategoriesManager'
 
 interface AdminStats {
     totalRevenue: number
@@ -194,6 +195,7 @@ export default function AdminDashboard() {
                         { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
                         { id: 'vendors', label: 'Partner Stores', icon: Store },
                         { id: 'riders', label: 'Rider Fleet', icon: Bike },
+                        { id: 'categories', label: 'Categories', icon: List },
                         { id: 'finances', label: 'Financials', icon: TrendingUp },
                         { id: 'settings', label: 'System Settings', icon: Settings },
                     ].map((item) => (
@@ -248,86 +250,105 @@ export default function AdminDashboard() {
                         <button onClick={() => fetchAdminData()} className="p-2 text-gray-400 hover:text-[var(--color-primary)] transition-colors">
                             <RefreshCw className="w-5 h-5" />
                         </button>
-                        <div className="hidden md:flex items-center gap-3">
-                            <NotificationBell />
-                            <div className="w-10 h-10 bg-[var(--color-primary)] rounded-xl flex items-center justify-center text-white font-bold">
-                                AD
-                            </div>
+                        <NotificationBell />
+                        <div className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white font-bold">
+                            AD
                         </div>
                     </div>
                 </header>
 
-                <div className="p-8 max-w-7xl mx-auto">
-                    {/* Top Metric Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                        {[
-                            { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: Wallet, color: 'text-blue-600', bg: 'bg-blue-50' },
-                            { label: 'Gross Profit', value: formatCurrency(stats.platformEarnings), icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
-                            { label: 'Rider Payouts', value: formatCurrency(stats.riderEarnings), icon: Bike, color: 'text-purple-600', bg: 'bg-purple-50' },
-                            { label: 'Active Orders', value: stats.activeOrders, icon: Package, color: 'text-orange-600', bg: 'bg-orange-50' },
-                        ].map((metric, i) => (
-                            <div key={i} className="card p-6 relative overflow-hidden group hover:shadow-xl transition-all duration-300">
-                                <div className={`absolute top-0 right-0 p-4 ${metric.bg} ${metric.color} rounded-bl-3xl opacity-80 group-hover:scale-110 transition-transform`}>
-                                    <metric.icon className="w-5 h-5" />
-                                </div>
-                                <p className="text-3xl font-bold text-gray-900 mb-1">{metric.value}</p>
-                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{metric.label}</p>
-                            </div>
-                        ))}
-                    </div>
-
+                <div className="p-8 pb-32">
                     {activeTab === 'overview' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Platform Activity */}
-                            <div className="lg:col-span-2 space-y-6">
-                                <div className="flex justify-between items-center px-2">
-                                    <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                        <div className="w-2 h-2 bg-[var(--color-primary)] rounded-full animate-pulse" />
-                                        Platform Activity
-                                    </h3>
-                                    <button onClick={() => setActiveTab('finances')} className="text-xs font-bold text-[var(--color-primary)] hover:underline uppercase tracking-widest">Full Record</button>
+                        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="card p-6 flex items-center gap-4 hover:scale-[1.02] transition-transform cursor-pointer group">
+                                    <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                        <Wallet className="w-8 h-8" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Revenue</p>
+                                        <h3 className="text-2xl font-black text-gray-900">{formatCurrency(stats.totalRevenue)}</h3>
+                                    </div>
                                 </div>
+                                <div className="card p-6 flex items-center gap-4 hover:scale-[1.02] transition-transform cursor-pointer group">
+                                    <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center text-orange-600 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+                                        <Package className="w-8 h-8" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Orders</p>
+                                        <h3 className="text-2xl font-black text-gray-900">{stats.activeOrders}</h3>
+                                    </div>
+                                </div>
+                                <div className="card p-6 flex items-center gap-4 hover:scale-[1.02] transition-transform cursor-pointer group">
+                                    <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                        <Store className="w-8 h-8" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Vendors</p>
+                                        <h3 className="text-2xl font-black text-gray-900">{stats.vendorCount}</h3>
+                                    </div>
+                                </div>
+                                <div className="card p-6 flex items-center gap-4 hover:scale-[1.02] transition-transform cursor-pointer group">
+                                    <div className="w-16 h-16 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                        <Bike className="w-8 h-8" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Active Riders</p>
+                                        <h3 className="text-2xl font-black text-gray-900">{stats.riderCount}</h3>
+                                    </div>
+                                </div>
+                            </div>
 
-                                <div className="card overflow-hidden">
+                            {/* Recent Orders Table */}
+                            <div className="card overflow-hidden">
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 className="font-bold text-gray-900">Live Network Activity</h3>
+                                    <button className="text-xs font-black text-[var(--color-primary)] uppercase tracking-widest hover:underline">View All Traffic</button>
+                                </div>
+                                <div className="overflow-x-auto">
                                     <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="bg-gray-50/50 border-b border-gray-100">
-                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest cursor-pointer hover:text-gray-900" onClick={() => setSortBy('date')}>Order Ref {sortBy === 'date' && '↓'}</th>
-                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Business</th>
+                                        <thead className="bg-gray-50/50">
+                                            <tr>
+                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Order ID</th>
+                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
                                                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right cursor-pointer hover:text-gray-900" onClick={() => setSortBy('sales')}>Value {sortBy === 'sales' && '↓'}</th>
-                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Ops</th>
+                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                                                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-50">
-                                            {sortedOrders.length === 0 ? (
-                                                <tr><td colSpan={5} className="p-12 text-center text-gray-400 font-medium italic">Searching platform records...</td></tr>
+                                            {stats.recentOrders.length === 0 ? (
+                                                <tr><td colSpan={5} className="p-8 text-center text-gray-400 text-sm font-medium">No active signals...</td></tr>
                                             ) : (
-                                                sortedOrders.map((order) => (
-                                                    <tr key={order.id} className="hover:bg-gray-50 transition-colors group/row">
-                                                        <td className="px-6 py-4">
-                                                            <p className="text-sm font-bold text-gray-900 mb-0.5">#{order.order_number}</p>
-                                                            <p className="text-[10px] text-gray-400 font-bold">{formatDate(order.created_at)}</p>
+                                                stats.recentOrders.map((order) => (
+                                                    <tr key={order.id} className="hover:bg-gray-50 transition-colors group">
+                                                        <td className="px-6 py-4 font-mono text-xs text-gray-500 font-bold">
+                                                            #{order.order_number.slice(-6)}
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <p className="text-sm font-bold text-gray-600">{order.vendor?.business_name}</p>
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 text-xs font-bold">
+                                                                    {order.profiles?.full_name?.[0] || 'U'}
+                                                                </div>
+                                                                <span className="text-sm font-bold text-gray-900">{order.profiles?.full_name || 'Guest User'}</span>
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4">
-                                                            <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border
-                                                                ${order.status === 'delivered' ? 'bg-green-50 text-green-600 border-green-200' :
-                                                                    order.status === 'cancelled' ? 'bg-red-50 text-red-600 border-red-200' :
-                                                                        'bg-[var(--color-primary-light)] text-[var(--color-primary)] border-[var(--color-primary)]/10'}
-                                                            `}>
-                                                                {order.status.replace(/_/g, ' ')}
+                                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${order.status === 'delivered' ? 'bg-green-100 text-green-700' :
+                                                                order.status === 'preparing' ? 'bg-orange-100 text-orange-700' :
+                                                                    'bg-blue-100 text-blue-700'
+                                                                }`}>
+                                                                {order.status}
                                                             </span>
                                                         </td>
-                                                        <td className="px-6 py-4 text-right">
-                                                            <p className="text-sm font-bold text-gray-900">{formatCurrency(order.total)}</p>
+                                                        <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                                                            {formatCurrency(order.total)}
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
                                                             <button
                                                                 onClick={() => deleteOrder(order.id)}
-                                                                className="p-2 text-gray-300 hover:text-red-500 opacity-0 group-hover/row:opacity-100 transition-all"
+                                                                className="p-2 text-gray-300 hover:text-red-500 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                                                title="Purge Transaction"
                                                             >
                                                                 <Trash2 className="w-4 h-4" />
                                                             </button>
@@ -340,38 +361,31 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
-                            {/* Sidebar Ranking */}
-                            <div className="space-y-6">
-                                <h3 className="text-lg font-bold text-gray-900 px-2 flex items-center gap-2">
-                                    <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                                    Top Performers
-                                </h3>
-                                <div className="space-y-4">
-                                    {stats.vendors.slice(0, 5).map((v, i) => (
-                                        <div key={v.id} className="card p-4 flex items-center justify-between group hover:border-[var(--color-primary)] transition-all">
-                                            <div className="flex items-center gap-4">
-                                                <div className="relative">
-                                                    <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center font-black text-gray-500 uppercase">
-                                                        {v.business_name?.[0]}
-                                                    </div>
-                                                    <div className="absolute -top-1 -left-1 w-5 h-5 bg-white border border-gray-100 rounded-full flex items-center justify-center text-[8px] font-black text-[var(--color-primary)] shadow-sm">
-                                                        #{i + 1}
-                                                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                {stats.vendors.slice(0, 4).map((v, i) => (
+                                    <div key={v.id} className="card p-4 flex items-center justify-between group hover:border-[var(--color-primary)] transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="relative">
+                                                <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center font-black text-gray-500 uppercase">
+                                                    {v.business_name?.[0]}
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900 group-hover:text-[var(--color-primary)] transition-colors">{v.business_name}</p>
-                                                    <div className="flex items-center gap-1.5 mt-0.5">
-                                                        <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                                                        <span className="text-[10px] font-black text-gray-400">{v.rating || '4.8'}</span>
-                                                        <span className="text-[10px] text-gray-300">•</span>
-                                                        <span className="text-[10px] font-black text-green-500">98% Success</span>
-                                                    </div>
+                                                <div className="absolute -top-1 -left-1 w-5 h-5 bg-white border border-gray-100 rounded-full flex items-center justify-center text-[8px] font-black text-[var(--color-primary)] shadow-sm">
+                                                    #{i + 1}
                                                 </div>
                                             </div>
-                                            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all" />
+                                            <div>
+                                                <p className="text-sm font-bold text-gray-900 group-hover:text-[var(--color-primary)] transition-colors">{v.business_name}</p>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                                                    <span className="text-[10px] font-black text-gray-400">{v.rating || '4.8'}</span>
+                                                    <span className="text-[10px] text-gray-300">•</span>
+                                                    <span className="text-[10px] font-black text-green-500">98% Success</span>
+                                                </div>
+                                            </div>
                                         </div>
-                                    ))}
-                                </div>
+                                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all" />
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
@@ -467,8 +481,8 @@ export default function AdminDashboard() {
                                                 </td>
                                                 <td className="px-8 py-6 text-center">
                                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest
-                                                        ${rider.is_available ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'}
-                                                    `}>
+                                                                         ${rider.is_available ? 'text-green-600 bg-green-50' : 'text-gray-400 bg-gray-100'}
+                                                                     `}>
                                                         {rider.is_available ? 'Accepting Jobs' : 'Offline'}
                                                     </span>
                                                 </td>
@@ -487,6 +501,8 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
+
+                    {activeTab === 'categories' && <CategoriesManager />}
 
                     {activeTab === 'finances' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -624,7 +640,7 @@ export default function AdminDashboard() {
                         </div>
                     )}
                 </div>
-            </main>
-        </div>
+            </main >
+        </div >
     )
 }

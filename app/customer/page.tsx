@@ -10,22 +10,34 @@ import StatusBadge from '@/components/ui/StatusBadge'
 import {
     Home, Package, User as UserIcon, Search, MapPin, Clock,
     Star, TrendingUp, Loader2, ShoppingBag, Filter, ChevronRight,
-    Bell, Map as MapIcon
+    Bell, Map as MapIcon, X
 } from 'lucide-react'
 import NotificationBell from '@/components/ui/NotificationBell'
+import dynamic from 'next/dynamic'
+
+const Map = dynamic(() => import('@/components/ui/Map'), {
+    ssr: false,
+    loading: () => (
+        <div className="w-full h-96 bg-gray-100 flex items-center justify-center rounded-3xl animate-pulse">
+            <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+        </div>
+    )
+})
 
 export default function CustomerDashboard() {
     const router = useRouter()
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
     const [vendors, setVendors] = useState<any[]>([])
+    const [categories, setCategories] = useState<any[]>([])
     const [activeOrders, setActiveOrders] = useState<any[]>([])
     const [searchQuery, setSearchQuery] = useState('')
+    const [selectedCategory, setSelectedCategory] = useState('All Discovery')
     const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid')
 
     useEffect(() => {
         checkUser()
-        fetchVendors()
+        fetchData()
         fetchActiveOrders()
 
         const channel = supabase
@@ -50,14 +62,23 @@ export default function CustomerDashboard() {
         setLoading(false)
     }
 
-    const fetchVendors = async () => {
-        const { data, error } = await supabase
+    const fetchData = async () => {
+        // Fetch Vendors
+        const { data: vendorsData } = await supabase
             .from('vendors')
             .select('*')
             .eq('is_active', true)
             .order('rating', { ascending: false })
 
-        if (!error) setVendors(data || [])
+        if (vendorsData) setVendors(vendorsData)
+
+        // Fetch Categories
+        const { data: categoriesData } = await supabase
+            .from('business_categories')
+            .select('*')
+            .order('name')
+
+        if (categoriesData) setCategories(categoriesData)
     }
 
     const fetchActiveOrders = async () => {
@@ -82,10 +103,15 @@ export default function CustomerDashboard() {
         router.push('/')
     }
 
-    const filteredVendors = vendors.filter(v =>
-        v.business_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        v.cuisine_type?.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    const filteredVendors = vendors.filter(v => {
+        const matchesSearch = v.business_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            v.cuisine_type?.toLowerCase().includes(searchQuery.toLowerCase())
+
+        const matchesCategory = selectedCategory === 'All Discovery' ||
+            categories.find(c => c.name === selectedCategory)?.id === v.business_category_id
+
+        return matchesSearch && matchesCategory
+    })
 
     if (loading) {
         return (
@@ -183,11 +209,11 @@ export default function CustomerDashboard() {
                         <Filter className="w-3.5 h-3.5 text-gray-300" />
                     </div>
                     <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
-                        {['All Discovery', 'Healthy Herbs', 'Groceries', 'Fast Food', 'Asian Fusion', 'Sweet Treats', 'Pharmacy', 'Drinks'].map((cat) => (
+                        {['All Discovery', ...categories.map(c => c.name)].map((cat) => (
                             <button
                                 key={cat}
-                                onClick={() => setSearchQuery(cat === 'All Discovery' ? '' : cat)}
-                                className={`px-5 py-2.5 rounded-xl whitespace-nowrap text-xs font-black tracking-wide transition-all uppercase ${(searchQuery === cat || (cat === 'All Discovery' && searchQuery === ''))
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-5 py-2.5 rounded-xl whitespace-nowrap text-xs font-black tracking-wide transition-all uppercase ${(selectedCategory === cat)
                                     ? 'bg-gray-900 text-white shadow-lg shadow-gray-200 transform scale-105'
                                     : 'bg-white text-gray-500 border border-gray-100 hover:border-gray-300 shadow-sm'
                                     }`}
@@ -270,20 +296,14 @@ export default function CustomerDashboard() {
                     </div>
 
                     {viewMode === 'map' ? (
-                        <div className="w-full h-96 bg-gray-100 rounded-3xl overflow-hidden relative group">
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-gray-50/50 backdrop-blur-sm z-10">
-                                <MapPin className="w-12 h-12 text-gray-300 mb-4 animate-bounce" />
-                                <h3 className="text-lg font-black text-gray-900 mb-2">Live Map View</h3>
-                                <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">Explore vendors visually on our interactive map. (Integration pending API key)</p>
-                                <button
-                                    onClick={() => setViewMode('grid')}
-                                    className="px-6 py-3 bg-[var(--color-primary)] text-white text-xs font-black uppercase tracking-widest rounded-xl hover:bg-opacity-90 transition-all shadow-xl shadow-[var(--color-primary)]/20"
-                                >
-                                    Switch to List
-                                </button>
-                            </div>
-                            {/* Mock Map Background */}
-                            <div className="absolute inset-0 opacity-20 grayscale bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-cover bg-center" />
+                        <div className="w-full h-96 bg-gray-100 rounded-3xl overflow-hidden relative shadow-inner z-0">
+                            <Map vendors={filteredVendors} center={[-1.2921, 36.8219]} />
+                            <button
+                                onClick={() => setViewMode('grid')}
+                                className="absolute top-4 right-4 bg-white p-2 rounded-xl shadow-lg z-[1000] hover:bg-gray-50 transition-colors"
+                            >
+                                <X className="w-5 h-5 text-gray-600" />
+                            </button>
                         </div>
                     ) : filteredVendors.length === 0 ? (
                         <div className="text-center py-20 card border-none shadow-sm">

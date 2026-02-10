@@ -7,7 +7,7 @@ import MetricCard from '@/components/ui/MetricCard'
 import StatusBadge from '@/components/ui/StatusBadge'
 import {
     LayoutDashboard, Utensils, ClipboardList, LogOut, Package,
-    Wallet, Star, TrendingUp, Loader2, Bell, Menu, X
+    Wallet, Star, TrendingUp, Loader2, Bell, Menu, X, Settings
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -103,6 +103,20 @@ export default function VendorDashboard() {
         router.push('/')
     }
 
+    const handleStatusToggle = async () => {
+        if (!vendor) return
+        const newStatus = !vendor.is_active
+
+        const { error } = await (supabase
+            .from('vendors') as any)
+            .update({ is_active: newStatus })
+            .eq('id', vendor.id)
+
+        if (!error) {
+            setVendor({ ...vendor, is_active: newStatus })
+        }
+    }
+
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center">
             <Loader2 className="w-10 h-10 animate-spin text-[var(--color-primary)]" />
@@ -140,6 +154,13 @@ export default function VendorDashboard() {
                         <Utensils className="w-5 h-5" />
                         Menu Items
                     </Link>
+                    <Link
+                        href="/vendor/dashboard/settings"
+                        className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-lg font-medium transition"
+                    >
+                        <Settings className="w-5 h-5" />
+                        Settings
+                    </Link>
                 </nav>
 
                 <div className="p-4 border-t border-gray-200">
@@ -150,9 +171,12 @@ export default function VendorDashboard() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-gray-900 truncate">{vendor?.business_name}</p>
-                                <span className={`text-xs font-medium ${vendor?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                                    {vendor?.is_active ? '● Online' : '● Offline'}
-                                </span>
+                                <button
+                                    onClick={handleStatusToggle}
+                                    className={`text-xs font-medium cursor-pointer hover:underline ${vendor?.is_active ? 'text-green-600' : 'text-red-600'}`}
+                                >
+                                    {vendor?.is_active ? '● Online' : '● Offline (Click to Go Online)'}
+                                </button>
                             </div>
                         </div>
                     </div>
