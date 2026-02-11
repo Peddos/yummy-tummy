@@ -16,6 +16,8 @@ export default function ActiveDeliveriesPage() {
     const [loading, setLoading] = useState(true)
     const [updating, setUpdating] = useState<string | null>(null)
     const [showItems, setShowItems] = useState(false)
+    const [pickupCode, setPickupCode] = useState('')
+    const [verifyingCode, setVerifyingCode] = useState(false)
 
     useEffect(() => {
         fetchActiveOrder()
@@ -103,6 +105,18 @@ export default function ActiveDeliveriesPage() {
             if (!window.confirm('Ready to start the trip? This will notify the customer.')) return
         }
 
+        if (status === 'picked_up') {
+            if (!pickupCode) {
+                alert('Verification Required: Please enter the 4-digit pickup code from the vendor.')
+                return
+            }
+            if (pickupCode !== order.pickup_code) {
+                alert('Invalid Code: The secret key does not match this shipment.')
+                return
+            }
+            setVerifyingCode(true)
+        }
+
         setUpdating(status)
         const { error } = await (supabase.from('orders') as any)
             .update({ status })
@@ -120,6 +134,7 @@ export default function ActiveDeliveriesPage() {
             }
         }
         setUpdating(null)
+        setVerifyingCode(false)
     }
 
     if (loading) return (
@@ -195,14 +210,28 @@ export default function ActiveDeliveriesPage() {
                         </div>
 
                         {order.status === 'assigned_to_rider' ? (
-                            <button
-                                onClick={() => updateStatus('picked_up')}
-                                disabled={!!updating}
-                                className="btn btn-primary w-full py-4 text-sm flex items-center justify-center gap-2"
-                            >
-                                {updating ? <Loader2 className="w-5 h-5 animate-spin" /> : <PackageCheck className="w-5 h-5" />}
-                                Confirm Pickup
-                            </button>
+                            <div className="space-y-4">
+                                <div className="group">
+                                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 ml-1">Vendor Handshake Code</label>
+                                    <input
+                                        type="text"
+                                        maxLength={4}
+                                        placeholder="0000"
+                                        value={pickupCode}
+                                        onChange={(e) => setPickupCode(e.target.value.replace(/\D/g, ''))}
+                                        className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl text-2xl font-black tracking-[0.5em] text-center outline-none focus:bg-white focus:border-[var(--color-primary)] transition-all placeholder:opacity-20"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => updateStatus('picked_up')}
+                                    disabled={!!updating || pickupCode.length !== 4}
+                                    className="btn btn-primary w-full py-4 text-sm flex items-center justify-center gap-2 shadow-xl shadow-[var(--color-primary)]/20 disabled:opacity-50 disabled:grayscale"
+                                >
+                                    {updating ? <Loader2 className="w-5 h-5 animate-spin" /> : <PackageCheck className="w-5 h-5" />}
+                                    Verify & Confirm Pickup
+                                </button>
+                                <p className="text-[10px] text-center text-gray-400 font-bold uppercase tracking-tight">Ask the vendor for the 4-digit security code</p>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2 text-green-600 font-bold text-xs bg-green-50 p-3 rounded-xl">
                                 <CheckCircle2 className="w-4 h-4" /> Picked up successfully

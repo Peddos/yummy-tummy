@@ -7,7 +7,7 @@ import MetricCard from '@/components/ui/MetricCard'
 import StatusBadge from '@/components/ui/StatusBadge'
 import {
     LayoutDashboard, Utensils, ClipboardList, LogOut, Package,
-    Wallet, Star, TrendingUp, Loader2, Bell, Menu, X, Settings
+    Wallet, Star, TrendingUp, Loader2, Bell, Menu, X, Settings, Shield
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -206,10 +206,52 @@ export default function VendorDashboard() {
                 </header>
 
                 <div className="p-6 max-w-7xl mx-auto">
+                    {/* Approval Status Banner */}
+                    {vendor?.approval_status !== 'approved' && (
+                        <div className={`mb-8 p-6 rounded-3xl border flex items-center justify-between animate-in slide-in-from-top-4 duration-500 ${vendor?.approval_status === 'pending' ? 'bg-orange-50 border-orange-100 text-orange-900' :
+                            vendor?.approval_status === 'rejected' ? 'bg-red-50 border-red-100 text-red-900' :
+                                'bg-gray-100 border-gray-200 text-gray-900'
+                            }`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${vendor?.approval_status === 'pending' ? 'bg-orange-200' :
+                                    vendor?.approval_status === 'rejected' ? 'bg-red-200' : 'bg-gray-200'
+                                    }`}>
+                                    <Shield className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-black uppercase tracking-tight leading-none mb-1">
+                                        {vendor?.approval_status === 'pending' ? 'Account Pending Approval' :
+                                            vendor?.approval_status === 'rejected' ? 'Account Application Rejected' :
+                                                'Account Suspended'}
+                                    </h3>
+                                    <p className="text-xs opacity-70 font-medium">
+                                        {vendor?.approval_status === 'pending' ? 'Our administrators are currently reviewing your contract. You will be notified once approved.' :
+                                            vendor?.approval_status === 'rejected' ? 'Your application did not meet our current requirements. Please contact support for details.' :
+                                                'Your account has been suspended for a policy violation. Please contact admin.'}
+                                    </p>
+                                </div>
+                            </div>
+                            {vendor?.approval_status === 'pending' && (
+                                <div className="hidden md:block">
+                                    <span className="px-4 py-2 bg-white/50 backdrop-blur-md rounded-xl text-[10px] font-black uppercase tracking-widest border border-orange-200">
+                                        Under Review
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Welcome Section */}
                     <div className="mb-8">
-                        <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {vendor?.business_name}!</h2>
-                        <p className="text-gray-500">Here's what's happening with your business today</p>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {vendor?.business_name}!</h2>
+                                <p className="text-gray-500">Here's what's happening with your business today</p>
+                            </div>
+                            <div className={`px-4 py-2 rounded-xl border text-[10px] font-black uppercase tracking-widest ${vendor?.approval_status === 'approved' ? 'bg-green-50 border-green-100 text-green-600' : 'bg-gray-100 border-gray-200 text-gray-400'}`}>
+                                Status: {vendor?.approval_status || 'Pending'}
+                            </div>
+                        </div>
                     </div>
 
                     {/* Metrics Grid */}

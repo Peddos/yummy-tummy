@@ -60,16 +60,36 @@ CREATE TRIGGER on_auth_user_created
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_user();
 
--- NOTE: Order number generation is handled by the API Layer or generate_order_number_trigger in schema.sql.
--- Redundant increment_order_number removed to avoid conflicts.
+-- ============================================
+-- ORDER INITIALIZATION (NUMBERING & PICKUP CODES)
+-- ============================================
 
--- ============================================
--- LOGGING
--- ============================================
+CREATE OR REPLACE FUNCTION handle_order_initialization()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Set order number on insert
+    IF TG_OP = 'INSERT' THEN
+        NEW.order_number := 'ORD-' || UPPER(SUBSTRING(REPLACE(uuid_generate_v4()::TEXT, '-', ''), 1, 8));
+    END IF;
+
+    -- Generate pickup code when status changes to ready_for_pickup
+    IF TG_OP = 'UPDATE' AND NEW.status = 'ready_for_pickup' AND (OLD.status IS DISTINCT FROM 'ready_for_pickup') THEN
+        NEW.pickup_code := LPAD(FLOOR(RANDOM() * 10000)::TEXT, 4, '0');
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS tr_order_initialization ON orders;
+CREATE TRIGGER tr_order_initialization
+    BEFORE INSERT OR UPDATE ON orders
+    FOR EACH ROW
+    EXECUTE FUNCTION handle_order_initialization();
 
 DO $$
 BEGIN
     RAISE NOTICE 'Core triggers created successfully';
     RAISE NOTICE '- Auto profile creation trigger';
-    RAISE NOTICE '- Order number increment trigger';
+    RAISE NOTICE '- Order initialization trigger (numbering & pickup codes)';
 END $$;

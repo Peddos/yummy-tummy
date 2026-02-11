@@ -196,12 +196,24 @@ CREATE POLICY "Vendors can view their orders"
     )
   );
 
--- Vendors can update their orders
-CREATE POLICY "Vendors can update their orders"
-  ON orders FOR UPDATE
+-- Vendors can update their own profile
+CREATE POLICY "Vendors can update own profile"
+  ON vendors FOR UPDATE
+  USING (id = auth.uid())
+  WITH CHECK (
+    id = auth.uid() AND
+    (
+      approval_status = (SELECT approval_status FROM vendors WHERE id = auth.uid())
+    )
+  );
+
+-- Admins can update vendors
+CREATE POLICY "Admins can update vendors"
+  ON vendors FOR ALL
   USING (
-    vendor_id IN (
-      SELECT id FROM vendors WHERE id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE id = auth.uid() AND role = 'admin'
     )
   );
 

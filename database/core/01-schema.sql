@@ -29,6 +29,14 @@ CREATE TABLE IF NOT EXISTS profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Vendor status enum
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'vendor_status') THEN
+        CREATE TYPE vendor_status AS ENUM ('pending', 'approved', 'rejected', 'suspended');
+    END IF;
+END $$;
+
 -- Vendors table
 CREATE TABLE IF NOT EXISTS vendors (
   id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
@@ -42,6 +50,7 @@ CREATE TABLE IF NOT EXISTS vendors (
   rating DECIMAL(3, 2) DEFAULT 0,
   total_reviews INTEGER DEFAULT 0,
   is_active BOOLEAN DEFAULT true,
+  approval_status vendor_status DEFAULT 'pending',
   total_earnings DECIMAL(12, 2) DEFAULT 0,
   pending_earnings DECIMAL(12, 2) DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()

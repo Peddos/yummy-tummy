@@ -135,7 +135,7 @@ export default function AdminDashboard() {
                 platformEarnings,
                 vendorEarnings,
                 riderEarnings,
-                vendorCount: vendors?.length || 0,
+                vendorCount: vendors?.filter((v: any) => v.approval_status === 'approved').length || 0,
                 riderCount: riders?.length || 0,
                 activeOrders: orders?.filter((o: any) => !['delivered', 'cancelled', 'completed'].includes(o.status)).length || 0,
                 recentOrders: orders?.slice(0, 10) || [],
@@ -174,6 +174,22 @@ export default function AdminDashboard() {
             else alert('Access Terminated: Insufficient administrative privileges.')
         } catch (error) {
             console.error('Delete error:', error)
+        }
+    }
+
+    const updateVendorStatus = async (vendorId: string, status: string) => {
+        if (!confirm(`System Directive: Are you sure you want to change this vendor's status to ${status.toUpperCase()}?`)) return
+        try {
+            const { error } = await (supabase.from('vendors') as any)
+                .update({ approval_status: status })
+                .eq('id', vendorId)
+
+            if (error) throw error
+            alert(`Vendor status updated to ${status}`)
+            fetchAdminData()
+        } catch (error: any) {
+            console.error('Update Alert:', error)
+            alert(`Critical Interface Error: ${error.message}`)
         }
     }
 
@@ -436,10 +452,52 @@ export default function AdminDashboard() {
                                                 <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${vendor.is_active ? 'bg-green-50 text-green-600 border-green-200' : 'bg-gray-100 text-gray-400 border-gray-200'}`}>
                                                     {vendor.is_active ? 'System Active' : 'System Offline'}
                                                 </span>
+                                                <span className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border mt-1 ${vendor.approval_status === 'approved' ? 'bg-blue-50 text-blue-600 border-blue-200' :
+                                                    vendor.approval_status === 'pending' ? 'bg-orange-50 text-orange-600 border-orange-200' :
+                                                        'bg-red-50 text-red-600 border-red-200'
+                                                    }`}>
+                                                    {vendor.approval_status || 'Pending'}
+                                                </span>
                                             </div>
                                         </div>
                                         <h4 className="text-xl font-bold text-gray-900 mb-1">{vendor.business_name}</h4>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">{vendor.cuisine_type || 'General Food'}</p>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">{vendor.cuisine_type || 'General Food'}</p>
+
+                                        {/* Approval Controls */}
+                                        <div className="flex gap-2 mb-6">
+                                            {vendor.approval_status !== 'approved' && (
+                                                <button
+                                                    onClick={() => updateVendorStatus(vendor.id, 'approved')}
+                                                    className="flex-1 py-2 bg-green-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-green-700 transition-colors shadow-lg shadow-green-100"
+                                                >
+                                                    Approve
+                                                </button>
+                                            )}
+                                            {vendor.approval_status === 'pending' && (
+                                                <button
+                                                    onClick={() => updateVendorStatus(vendor.id, 'rejected')}
+                                                    className="flex-1 py-2 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition-colors"
+                                                >
+                                                    Reject
+                                                </button>
+                                            )}
+                                            {vendor.approval_status === 'approved' && (
+                                                <button
+                                                    onClick={() => updateVendorStatus(vendor.id, 'suspended')}
+                                                    className="flex-1 py-2 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-colors"
+                                                >
+                                                    Suspend
+                                                </button>
+                                            )}
+                                            {(vendor.approval_status === 'suspended' || vendor.approval_status === 'rejected') && (
+                                                <button
+                                                    onClick={() => updateVendorStatus(vendor.id, 'approved')}
+                                                    className="flex-1 py-2 bg-[var(--color-primary)] text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity shadow-lg shadow-[var(--color-primary)]/20"
+                                                >
+                                                    Re-Activate
+                                                </button>
+                                            )}
+                                        </div>
 
                                         <div className="grid grid-cols-2 gap-4 pt-6 border-t border-gray-100">
                                             <div>

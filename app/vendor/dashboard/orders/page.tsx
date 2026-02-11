@@ -227,8 +227,16 @@ export default function VendorOrdersPage() {
                                                         </button>
                                                     )}
                                                     {['ready_for_pickup', 'assigned_to_rider', 'picked_up', 'in_transit'].includes(order.status) && (
-                                                        <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold flex items-center gap-2">
-                                                            <Truck className="w-4 h-4 animate-bounce" /> Dispatching
+                                                        <div className="flex items-center gap-3">
+                                                            {order.pickup_code && (
+                                                                <div className="px-4 py-2 bg-purple-50 text-purple-700 rounded-xl border border-purple-100 flex flex-col items-center">
+                                                                    <span className="text-[10px] font-black uppercase opacity-60">Pickup Code</span>
+                                                                    <span className="text-lg font-black tracking-widest">{order.pickup_code}</span>
+                                                                </div>
+                                                            )}
+                                                            <div className="px-4 py-2 bg-blue-50 text-blue-700 rounded-xl text-xs font-bold flex items-center gap-2">
+                                                                <Truck className="w-4 h-4 animate-bounce" /> Dispatching
+                                                            </div>
                                                         </div>
                                                     )}
                                                 </div>

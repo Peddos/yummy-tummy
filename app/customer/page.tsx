@@ -68,6 +68,7 @@ export default function CustomerDashboard() {
             .from('vendors')
             .select('*')
             .eq('is_active', true)
+            .eq('approval_status', 'approved')
             .order('rating', { ascending: false })
 
         if (vendorsData) setVendors(vendorsData)
