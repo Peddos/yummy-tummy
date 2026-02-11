@@ -8,7 +8,7 @@ import StatusBadge from '@/components/ui/StatusBadge'
 import {
     ArrowLeft, Package, Clock, MapPin,
     Phone, Store, Bike, ChefHat, CheckCircle2,
-    Loader2, AlertCircle, Navigation
+    Loader2, AlertCircle, Navigation, Star, X, Utensils
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -18,6 +18,10 @@ export default function OrderTrackingPage() {
     const [order, setOrder] = useState<any>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [showRating, setShowRating] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
+    const [ratings, setRatings] = useState({ vendor: 5, rider: 5 })
+    const [comments, setComments] = useState({ vendor: '', rider: '' })
 
     useEffect(() => {
         if (!id) return
@@ -31,7 +35,7 @@ export default function OrderTrackingPage() {
                 table: 'orders',
                 filter: `id=eq.${id}`
             }, (payload) => {
-                setOrder((prev: any) => ({ ...(prev || {}), ...payload.new }))
+                setOrder((prev: any) => prev ? { ...prev, ...payload.new } : payload.new)
             })
             .subscribe()
 
@@ -68,7 +72,7 @@ export default function OrderTrackingPage() {
                 .single()
 
             if (!joinErr && fullData) {
-                setOrder((prev: any) => ({ ...(prev || {}), ...fullData }))
+                setOrder((prev: any) => prev ? { ...prev, ...fullData } : fullData)
             } else if (joinErr) {
                 console.warn('Metadata enrichment failed:', joinErr)
             }
@@ -78,6 +82,41 @@ export default function OrderTrackingPage() {
             setError(err.message || 'Unknown synchronization error')
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleConfirmDelivery = async () => {
+        try {
+            setSubmitting(true)
+            // 1. Update Order Status to delivered
+            const { error: orderError } = await (supabase.from('orders') as any)
+                .update({ status: 'delivered' })
+                .eq('id', id)
+
+            if (orderError) throw orderError
+
+            // 2. Submit Reviews
+            const { error: reviewError } = await (supabase.from('reviews') as any)
+                .upsert({
+                    order_id: id,
+                    customer_id: order.customer_id,
+                    vendor_id: order.vendor_id,
+                    rider_id: order.rider_id,
+                    vendor_rating: ratings.vendor,
+                    rider_rating: ratings.rider,
+                    vendor_comment: comments.vendor,
+                    rider_comment: comments.rider
+                })
+
+            if (reviewError) console.error('Review Error:', reviewError)
+
+            setShowRating(false)
+            fetchOrder()
+            alert('🎉 Thank you for your feedback! Enjoy your meal.')
+        } catch (err: any) {
+            alert(`Failed to confirm delivery: ${err.message}`)
+        } finally {
+            setSubmitting(false)
         }
     }
 
@@ -111,6 +150,7 @@ export default function OrderTrackingPage() {
         { key: 'preparing', label: 'In the Kitchen', icon: ChefHat, color: 'text-blue-500' },
         { key: 'ready_for_pickup', label: 'Order Packaged', icon: Package, color: 'text-purple-500' },
         { key: 'picked_up', label: 'Out for Delivery', icon: Bike, color: 'text-[var(--color-primary)]' },
+        { key: 'arrived', label: 'Courier at Location', icon: MapPin, color: 'text-orange-600' },
         { key: 'delivered', label: 'Enjoy Your Meal', icon: Utensils, color: 'text-green-600' }
     ]
 
@@ -124,8 +164,9 @@ export default function OrderTrackingPage() {
             'assigned_to_rider': 4,
             'picked_up': 5,
             'in_transit': 5,
-            'delivered': 6,
-            'completed': 6
+            'arrived': 6,
+            'delivered': 7,
+            'completed': 7
         }
 
         const currentLevel = statusMap[order.status] || 0
@@ -278,27 +319,99 @@ export default function OrderTrackingPage() {
                     </div>
                 </div>
             </main>
-        </div>
-    )
-}
 
-function Utensils(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
-            <path d="M7 2v20" />
-            <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
-        </svg>
+            {/* Confirmation & Rating UI */}
+            {order.status === 'arrived' && (
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-50">
+                    <div className="max-w-xl mx-auto">
+                        <button
+                            onClick={() => setShowRating(true)}
+                            className="btn btn-primary w-full h-14 text-sm font-black uppercase tracking-[0.2em] shadow-xl shadow-[var(--color-primary)]/20 active:scale-[0.98] transition-all"
+                        >
+                            Confirm & Rate Package
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showRating && (
+                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
+                    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => setShowRating(false)} />
+                    <div className="bg-white w-full max-w-xl rounded-t-[2.5rem] sm:rounded-[2.5rem] relative z-10 p-8 shadow-2xl animate-in slide-in-from-bottom duration-500">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-black text-gray-900 leading-none">Rate Your Experience</h2>
+                            <button onClick={() => setShowRating(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-100">
+                                <X className="w-5 h-5 text-gray-400" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-8">
+                            {/* Vendor Rating */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-orange-50 text-orange-500 rounded-lg flex items-center justify-center">
+                                        <Store className="w-4 h-4" />
+                                    </div>
+                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">Food Quality ( {order.vendor?.business_name} )</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            onClick={() => setRatings(prev => ({ ...prev, vendor: star }))}
+                                            className={`p-2 rounded-xl transition-all ${ratings.vendor >= star ? 'text-orange-500 bg-orange-50 scale-110' : 'text-gray-200'}`}
+                                        >
+                                            <Star className="w-8 h-8 fill-current" />
+                                        </button>
+                                    ))}
+                                </div>
+                                <textarea
+                                    value={comments.vendor}
+                                    onChange={(e) => setComments(prev => ({ ...prev, vendor: e.target.value }))}
+                                    placeholder="Any feedback for the restaurant?"
+                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-orange-100 resize-none h-20"
+                                />
+                            </div>
+
+                            {/* Rider Rating */}
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center">
+                                        <Bike className="w-4 h-4" />
+                                    </div>
+                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest leading-none">Logistics ( {order.rider?.profile?.full_name} )</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            onClick={() => setRatings(prev => ({ ...prev, rider: star }))}
+                                            className={`p-2 rounded-xl transition-all ${ratings.rider >= star ? 'text-blue-500 bg-blue-50 scale-110' : 'text-gray-200'}`}
+                                        >
+                                            <Star className="w-8 h-8 fill-current" />
+                                        </button>
+                                    ))}
+                                </div>
+                                <textarea
+                                    value={comments.rider}
+                                    onChange={(e) => setComments(prev => ({ ...prev, rider: e.target.value }))}
+                                    placeholder="How was the delivery service?"
+                                    className="w-full bg-gray-50 border-none rounded-2xl p-4 text-sm font-medium focus:ring-2 focus:ring-blue-100 resize-none h-20"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleConfirmDelivery}
+                                disabled={submitting}
+                                className="btn btn-primary w-full h-16 rounded-2xl text-base flex items-center justify-center gap-3"
+                            >
+                                {submitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
+                                Complete & Confirm Delivery
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     )
 }

@@ -45,7 +45,7 @@ export default function ActiveDeliveriesPage() {
             .from('orders')
             .select('id, order_number, status')
             .eq('rider_id', user.id)
-            .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
+            .in('status', ['assigned_to_rider', 'picked_up', 'in_transit', 'arrived'])
             .order('created_at', { ascending: false })
             .limit(1)
 
@@ -63,7 +63,7 @@ export default function ActiveDeliveriesPage() {
                 items:order_items (id, quantity, menu_item:menu_item_id (name))
             `)
             .eq('rider_id', user.id)
-            .in('status', ['assigned_to_rider', 'picked_up', 'in_transit'])
+            .in('status', ['assigned_to_rider', 'picked_up', 'in_transit', 'arrived'])
             .order('created_at', { ascending: false })
             .limit(1)
 
@@ -95,6 +95,8 @@ export default function ActiveDeliveriesPage() {
     const updateStatus = async (status: string) => {
         if (status === 'delivered') {
             if (!window.confirm('Confirm Delivery: Have you successfully handed the order to the customer?')) return
+        } else if (status === 'arrived') {
+            if (!window.confirm('Have you arrived at the customer location? They will be notified to confirm and rate.')) return
         } else if (status === 'picked_up') {
             if (!window.confirm('Confirm Pickup: Have you received all items from the vendor?')) return
         } else if (status === 'in_transit') {
@@ -102,9 +104,8 @@ export default function ActiveDeliveriesPage() {
         }
 
         setUpdating(status)
-        const { error } = await supabase
-            .from('orders')
-            .update({ status } as any)
+        const { error } = await (supabase.from('orders') as any)
+            .update({ status })
             .eq('id', order.id)
 
         if (error) {
@@ -257,12 +258,23 @@ export default function ActiveDeliveriesPage() {
                             )}
                             {order.status === 'in_transit' && (
                                 <button
-                                    onClick={() => updateStatus('delivered')}
+                                    onClick={() => updateStatus('arrived')}
                                     className="btn btn-primary w-full py-4 text-sm bg-green-600 border-green-600 flex items-center justify-center gap-2"
                                 >
-                                    <PackageCheck className="w-5 h-5" />
-                                    Complete Delivery
+                                    <MapPin className="w-5 h-5" />
+                                    Mark as Arrived
                                 </button>
+                            )}
+                            {order.status === 'arrived' && (
+                                <div className="bg-orange-50 border border-orange-100 p-4 rounded-2xl flex flex-col items-center gap-3 text-center">
+                                    <Loader2 className="w-6 h-6 text-orange-500 animate-spin" />
+                                    <p className="text-sm font-bold text-orange-900 leading-tight">
+                                        Waiting for Customer to Confirm Receipt...
+                                    </p>
+                                    <p className="text-[10px] font-medium text-orange-600 uppercase tracking-widest">
+                                        Earnings will be processed after confirmation
+                                    </p>
+                                </div>
                             )}
                         </div>
                     </div>

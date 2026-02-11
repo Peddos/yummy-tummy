@@ -105,6 +105,7 @@ BEGIN
           'assigned_to_rider',
           'picked_up',
           'in_transit',
+          'arrived',
           'delivered',
           'completed',
           'cancelled'

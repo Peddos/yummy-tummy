@@ -179,10 +179,13 @@ CREATE POLICY "Customers can view own orders"
   ON orders FOR SELECT
   USING (customer_id = auth.uid());
 
--- Customers can create orders
-CREATE POLICY "Customers can create orders"
-  ON orders FOR INSERT
-  WITH CHECK (customer_id = auth.uid());
+CREATE POLICY "Customers can update own orders"
+  ON orders FOR UPDATE
+  USING (customer_id = auth.uid())
+  WITH CHECK (
+    customer_id = auth.uid() AND
+    status = 'delivered'
+  );
 
 -- Vendors can view their orders
 CREATE POLICY "Vendors can view their orders"
