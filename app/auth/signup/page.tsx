@@ -53,13 +53,44 @@ function SignupContent() {
             })
 
             if (signUpError) throw signUpError
-            if (!authData.user) throw new Error('Failed to create user')
+            if (!authData.user) throw new Error('Account creation failed. Please try again.')
 
-            // Wait a moment for the trigger to create the profile
-            await new Promise(resolve => setTimeout(resolve, 500))
+            // Wait for the trigger to create the profile
+            let profileCreated = false
+            for (let i = 0; i < 5; i++) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('id')
+                    .eq('id', authData.user.id)
+                    .maybeSingle()
+                
+                if (profile) {
+                    profileCreated = true
+                    break
+                }
+                await new Promise(resolve => setTimeout(resolve, i === 0 ? 500 : 1000))
+            }
+
+            if (!profileCreated) {
+                console.error('Profile not created by trigger after signup')
+                // Attempt manual creation if trigger failed
+                const { error: insertError } = await supabase.from('profiles').insert({
+                    id: authData.user.id,
+                    role: formData.role,
+                    full_name: formData.fullName,
+                    phone: formData.phone,
+                })
+                
+                if (insertError) {
+                    if (insertError.message.includes('unique constraint') || insertError.message.includes('profiles_phone_key')) {
+                        throw new Error('This phone number is already registered to another account.')
+                    }
+                    throw new Error(`Profile creation failed: ${insertError.message}`)
+                }
+            }
 
             // Update profile with complete information
-            const { error: profileError } = await supabase
+            const { error: profileUpdateError } = await supabase
                 .from('profiles')
                 .update({
                     role: formData.role,
@@ -68,26 +99,27 @@ function SignupContent() {
                 })
                 .eq('id', authData.user.id)
 
-            if (profileError) {
-                console.error('Profile update error:', profileError)
+            if (profileUpdateError) {
+                console.error('Profile update error:', profileUpdateError)
+                throw new Error(`Profile setup failed: ${profileUpdateError.message}`)
             }
 
             // Create role-specific record
             if (formData.role === 'vendor') {
-                const { error: vendorError } = await supabase.from('vendors').insert({
+                const { error: vendorError } = await supabase.from('vendors').upsert({
                     id: authData.user.id,
                     business_name: formData.businessName,
                     address: formData.address,
                     cuisine_type: formData.cuisineType,
                 })
-                if (vendorError) throw vendorError
+                if (vendorError) throw new Error(`Business registration failed: ${vendorError.message}`)
             } else if (formData.role === 'rider') {
-                const { error: riderError } = await supabase.from('riders').insert({
+                const { error: riderError } = await supabase.from('riders').upsert({
                     id: authData.user.id,
                     vehicle_type: formData.vehicleType,
                     vehicle_number: formData.vehicleNumber,
                 })
-                if (riderError) throw riderError
+                if (riderError) throw new Error(`Rider registration failed: ${riderError.message}`)
             }
 
             // Redirect based on role
@@ -100,7 +132,7 @@ function SignupContent() {
 
             router.push(redirectMap[formData.role] || '/customer')
         } catch (err: any) {
-            setError(err.message || 'Failed to sign up')
+            setError(err.message || 'Signup failed. Please check your details and try again.')
         } finally {
             setLoading(false)
         }

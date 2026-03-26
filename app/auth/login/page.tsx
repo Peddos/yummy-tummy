@@ -27,7 +27,14 @@ function LoginContent() {
                 password,
             })
 
-            if (signInError) throw signInError
+            if (signInError) {
+                if (signInError.message.includes('Invalid login credentials')) {
+                    throw new Error('Invalid email or password. Please try again.')
+                }
+                throw signInError
+            }
+
+            if (!data.user) throw new Error('No user data returned from authentication')
 
             const { data: profile, error: profileError } = await supabase
                 .from('profiles')
@@ -35,7 +42,13 @@ function LoginContent() {
                 .eq('id', data.user.id)
                 .single()
 
-            if (profileError) throw profileError
+            if (profileError) {
+                console.error('Login profile error:', profileError)
+                if (profileError.code === 'PGRST116') {
+                    throw new Error('Your user account exists but your profile is missing. This usually happens if the database was reset. Please contact support or try signing up again.')
+                }
+                throw new Error(`Profile access error: ${profileError.message}`)
+            }
 
             const redirectMap: Record<string, string> = {
                 customer: '/customer',
