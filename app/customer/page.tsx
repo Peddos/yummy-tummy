@@ -67,8 +67,6 @@ export default function CustomerDashboard() {
         const { data: vendorsData } = await supabase
             .from('vendors')
             .select('*')
-            .eq('is_active', true)
-            .eq('approval_status', 'approved')
             .order('rating', { ascending: false })
 
         if (vendorsData) setVendors(vendorsData)

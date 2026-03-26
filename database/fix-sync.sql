@@ -96,8 +96,16 @@ CREATE TRIGGER on_auth_user_created
     FOR EACH ROW
     EXECUTE FUNCTION public.handle_new_user();
 
--- 5. Ensure RLS is active
+-- 5. Ensure RLS is active & Unrestricted for Demo
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vendors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE menu_items ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Anyone can view active vendors" ON vendors;
+CREATE POLICY "Anyone can view active vendors" ON vendors FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Anyone can view available menu items" ON menu_items;
+CREATE POLICY "Anyone can view available menu items" ON menu_items FOR SELECT USING (true);
 
 -- 6. Repair any orphaned users
 INSERT INTO public.profiles (id, role, full_name, phone)

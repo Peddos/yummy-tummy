@@ -47,10 +47,10 @@ CREATE POLICY "Admins can view all profiles"
 -- VENDORS POLICIES
 -- =============================================
 
--- Everyone can view active vendors
+-- Everyone can view all vendors (Restricted access lifted for demo)
 CREATE POLICY "Anyone can view active vendors"
   ON vendors FOR SELECT
-  USING (is_active = true);
+  USING (true);
 
 -- Vendors can view their own data
 CREATE POLICY "Vendors can view own data"
@@ -129,10 +129,10 @@ CREATE POLICY "Admins can manage categories"
 -- MENU ITEMS POLICIES
 -- =============================================
 
--- Everyone can view available menu items
+-- Everyone can view all menu items
 CREATE POLICY "Anyone can view available menu items"
   ON menu_items FOR SELECT
-  USING (is_available = true);
+  USING (true);
 
 -- Vendors can view their own menu items
 CREATE POLICY "Vendors can view own menu items"
